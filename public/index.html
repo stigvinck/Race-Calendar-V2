@@ -44,6 +44,16 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .live-dot { display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+/* Sources button */
+.sources-btn {
+    padding: 4px 10px; border-radius: 6px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-family: 'Outfit', sans-serif;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease;
+}
+.sources-btn:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ── Filter Bar ────────────── */
 .filter-bar {
     max-width: 1200px; margin: 16px auto 0; padding: 0 24px;
@@ -85,8 +95,9 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .tog[data-loc="Bangkok"].on { background: #0f766e; border-color: #0f766e; }
 .tog[data-loc="Other"].on { background: #6b7280; border-color: #6b7280; }
 
-/* Time ON color */
-.tog[data-time].on { background: var(--text); border-color: var(--text); }
+/* Date status ON colors */
+.tog[data-date-status="confirmed"].on { background: #16a34a; border-color: #16a34a; }
+.tog[data-date-status="tbd"].on { background: #d97706; border-color: #d97706; }
 
 /* ── Cards ─────────────────── */
 .main-area { max-width: 1200px; margin: 20px auto 0; padding: 0 24px 80px; }
@@ -117,7 +128,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
 }
 .cbadge.upcoming { background: #22c55e; color: #fff; }
-.cbadge.past { background: #94a3b8; color: #fff; }
+.cbadge.tbd { background: #d97706; color: #fff; }
 .src-tag {
     position: absolute; top: 8px; right: 8px;
     padding: 2px 6px; border-radius: 4px;
@@ -161,6 +172,47 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     display: none;
 }
 
+/* ── Sources Modal ────────── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 1000;
+    justify-content: center; align-items: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+    background: var(--surface); border-radius: 16px;
+    max-width: 600px; width: 90%; max-height: 80vh;
+    overflow-y: auto; padding: 28px; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-close {
+    position: absolute; top: 12px; right: 12px;
+    background: none; border: none; font-size: 20px;
+    cursor: pointer; color: var(--text-3); padding: 4px 8px;
+    border-radius: 6px;
+}
+.modal-close:hover { background: var(--tag-bg); color: var(--text); }
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.modal .modal-sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
+.source-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.source-item:last-child { border-bottom: none; }
+.source-info { display: flex; flex-direction: column; gap: 2px; }
+.source-name { font-size: 14px; font-weight: 600; }
+.source-url { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+.source-desc { font-size: 12px; color: var(--text-2); }
+.source-status {
+    padding: 3px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+    flex-shrink: 0;
+}
+.source-status.active { background: #dcfce7; color: #166534; }
+.source-status.planned { background: #fef3c7; color: #92400e; }
+.source-status.blocked { background: #fee2e2; color: #b91c1c; }
+
 /* ── Responsive ────────────── */
 @media (max-width: 600px) {
     .hdr-inner { flex-direction: column; align-items: flex-start; }
@@ -168,6 +220,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     .filter-row { gap: 5px; }
     .tog { padding: 4px 10px; font-size: 11px; }
     .filter-label { min-width: 50px; font-size: 10px; }
+    .modal { padding: 20px; }
 }
 </style>
 </head>
@@ -178,19 +231,18 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     <h1>🏃 Thailand <span>Race Finder</span></h1>
     <div class="hdr-stats">
         <div class="pill"><strong id="total-count">0</strong> races</div>
-        <div class="pill"><strong id="upcoming-count">0</strong> upcoming</div>
         <div class="pill"><strong id="showing-count">0</strong> showing</div>
         <div id="last-updated"></div>
+        <button class="sources-btn" id="sources-btn">📡 Sources</button>
     </div>
 </div>
 </div>
 
 <div class="filter-bar">
-    <div class="filter-row" id="time-row">
-        <span class="filter-label">Time</span>
-        <button class="tog on" data-time="all">All</button>
-        <button class="tog" data-time="upcoming">Upcoming</button>
-        <button class="tog" data-time="past">Past</button>
+    <div class="filter-row" id="date-status-row">
+        <span class="filter-label">Date</span>
+        <button class="tog on" data-date-status="confirmed"><span class="emoji">✅</span>Confirmed</button>
+        <button class="tog on" data-date-status="tbd"><span class="emoji">❓</span>TBD</button>
     </div>
     <div class="filter-row" id="type-row">
         <span class="filter-label">Type</span>
@@ -215,15 +267,37 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 
 <div class="main-area" id="grid-wrap"></div>
 
-<script>
-const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const SH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const TL = {run:"Run",trail:"Trail",triathlon:"Tri",cycling:"Cycling",swim:"Swim",obstacle:"OCR",other:"Other"};
+<!-- Sources Modal -->
+<div class="modal-overlay" id="sources-modal">
+<div class="modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <h2>📡 Data Sources</h2>
+    <p class="modal-sub">Sites actively scraped every 6 hours for Thailand race data.</p>
+    <div id="sources-list"></div>
+</div>
+</div>
 
-let allRaces = [];
-let activeTypes = new Set(["run","trail","triathlon","cycling","swim","obstacle","other"]);
-let activeLocs = new Set(["Chiang Mai","Bangkok","Other"]);
-let activeTime = "all";
+<script>
+var MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var SH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var TL = {run:"Run",trail:"Trail",triathlon:"Tri",cycling:"Cycling",swim:"Swim",obstacle:"OCR",other:"Other"};
+
+var allRaces = [];
+var activeTypes = new Set(["run","trail","triathlon","cycling","swim","obstacle","other"]);
+var activeLocs = new Set(["Chiang Mai","Bangkok","Other"]);
+var showConfirmed = true;
+var showTbd = true;
+
+/* ── Source registry (displayed in modal) ── */
+var SOURCES = [
+    { name: "Runlah", url: "runlah.com", desc: "Largest Thai running calendar — 77 provinces scraped", status: "active" },
+    { name: "GoToRace", url: "gotorace.com", desc: "Curated Thailand events — road, trail, tri, cycling", status: "active" },
+    { name: "JogAndJoy", url: "jogandjoy.com", desc: "Thailand running calendar & event listings", status: "active" },
+    { name: "Thai.Run", url: "thai.run", desc: "Thai race registration platform — event calendar", status: "active" },
+    { name: "Finishers", url: "finishers.com", desc: "Asia-wide race aggregator — Thailand & SEA events", status: "active" },
+    { name: "WorldsMarathons", url: "worldsmarathons.com", desc: "Global marathon directory — JS-rendered SPA", status: "blocked" },
+    { name: "Ahotu", url: "ahotu.com", desc: "Global endurance calendar — JS-rendered SPA", status: "blocked" },
+];
 
 function locBucket(province) {
     if (province === "Chiang Mai") return "Chiang Mai";
@@ -231,20 +305,33 @@ function locBucket(province) {
     return "Other";
 }
 
+function isTbd(race) {
+    if (!race.date) return true;
+    var d = race.date.toUpperCase();
+    return d === "TBA" || d === "TBD" || d === "UNKNOWN" || d === "";
+}
+
 async function load() {
     try {
-        const r = await fetch('./races.json');
+        var r = await fetch('./races.json');
         if (!r.ok) throw new Error('fetch failed');
-        const d = await r.json();
+        var d = await r.json();
         allRaces = d.races || [];
+
+        // Update sources from server if available
+        if (d.sources && d.sources.length) {
+            SOURCES = d.sources;
+        }
+
         if (d.lastUpdated) {
-            const dt = new Date(d.lastUpdated);
+            var dt = new Date(d.lastUpdated);
             document.getElementById('last-updated').innerHTML =
                 '<span class="live-dot"></span>Updated ' +
                 dt.toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
         }
         updateStats();
         render();
+        renderSources();
     } catch(e) {
         document.getElementById('grid-wrap').innerHTML =
             '<div style="text-align:center;padding:60px 20px;color:#999">Failed to load race data.</div>';
@@ -252,40 +339,50 @@ async function load() {
 }
 
 function updateStats() {
-    const today = new Date().toISOString().split('T')[0];
     document.getElementById('total-count').textContent = allRaces.length;
-    document.getElementById('upcoming-count').textContent = allRaces.filter(r => r.date >= today).length;
 }
 
 function getFiltered() {
-    const today = new Date().toISOString().split('T')[0];
-    return allRaces.filter(r => {
-        if (activeTime === 'upcoming' && r.date < today) return false;
-        if (activeTime === 'past' && r.date >= today) return false;
-        const rt = r.type || 'other';
+    return allRaces.filter(function(r) {
+        // Date status filter
+        var tbd = isTbd(r);
+        if (tbd && !showTbd) return false;
+        if (!tbd && !showConfirmed) return false;
+
+        // Type filter
+        var rt = r.type || 'other';
         if (!activeTypes.has(rt)) return false;
-        const lb = locBucket(r.province || 'Other');
+
+        // Location filter
+        var lb = locBucket(r.province || 'Other');
         if (!activeLocs.has(lb)) return false;
+
         return true;
     });
 }
 
 function card(race) {
-    const today = new Date().toISOString().split('T')[0];
-    const up = race.date >= today;
-    const d = new Date(race.date + 'T00:00:00');
-    const ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-    const fb = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f0eeeb' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
-    const rt = race.type || 'other';
-    const prov = race.province || 'Thailand';
-    const dist = (race.distances && race.distances.length) ? '<div class="card-meta">' + race.distances.join(' · ') + '</div>' : '';
-    const src = race.source ? '<span class="src-tag">' + race.source + '</span>' : '';
-    const imgSrc = race.image || fb;
+    var tbd = isTbd(race);
+    var ds;
+    if (tbd) {
+        ds = 'TBA';
+    } else {
+        var d = new Date(race.date + 'T00:00:00');
+        ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    }
+    var fb = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f0eeeb' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
+    var rt = race.type || 'other';
+    var prov = race.province || 'Thailand';
+    var dist = (race.distances && race.distances.length) ? '<div class="card-meta">' + race.distances.join(' · ') + '</div>' : '';
+    var src = race.source ? '<span class="src-tag">' + race.source + '</span>' : '';
+    var imgSrc = race.image || fb;
+    var badgeClass = tbd ? 'tbd' : 'upcoming';
+    var badgeText = tbd ? 'TBA' : 'Upcoming';
 
     return '<a class="card" href="' + race.url + '" target="_blank" rel="noopener">' +
         '<div class="card-img">' +
             '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'' + fb + '\'"/>' +
-            '<span class="cbadge ' + (up ? 'upcoming' : 'past') + '">' + (up ? 'Upcoming' : 'Past') + '</span>' +
+            '<span class="cbadge ' + badgeClass + '">' + badgeText + '</span>' +
             src +
         '</div>' +
         '<div class="card-body">' +
@@ -318,12 +415,23 @@ function render() {
 
     noEl.style.display = 'none';
 
-    // Group by month
-    var groups = {};
+    // Separate TBD and dated races
+    var dated = [];
+    var tbdRaces = [];
     for (var i = 0; i < list.length; i++) {
-        var key = list[i].date.substring(0, 7);
+        if (isTbd(list[i])) {
+            tbdRaces.push(list[i]);
+        } else {
+            dated.push(list[i]);
+        }
+    }
+
+    // Group dated by month
+    var groups = {};
+    for (var i = 0; i < dated.length; i++) {
+        var key = dated[i].date.substring(0, 7);
         if (!groups[key]) groups[key] = [];
-        groups[key].push(list[i]);
+        groups[key].push(dated[i]);
     }
 
     var html = '';
@@ -333,6 +441,15 @@ function render() {
         html += '<div class="month-group"><div class="month-label">' + MO[parseInt(ym[1]) - 1] + ' ' + ym[0] + '</div><div class="race-grid">';
         for (var j = 0; j < groups[keys[k]].length; j++) {
             html += card(groups[keys[k]][j]);
+        }
+        html += '</div></div>';
+    }
+
+    // TBD section at the end
+    if (tbdRaces.length > 0) {
+        html += '<div class="month-group"><div class="month-label">📅 Date TBA</div><div class="race-grid">';
+        for (var t = 0; t < tbdRaces.length; t++) {
+            html += card(tbdRaces[t]);
         }
         html += '</div></div>';
     }
@@ -348,9 +465,47 @@ function render() {
     }
 }
 
+function renderSources() {
+    var container = document.getElementById('sources-list');
+    var html = '';
+    for (var i = 0; i < SOURCES.length; i++) {
+        var s = SOURCES[i];
+        html += '<div class="source-item">' +
+            '<div class="source-info">' +
+                '<div class="source-name">' + s.name + '</div>' +
+                '<div class="source-url">' + s.url + '</div>' +
+                '<div class="source-desc">' + s.desc + '</div>' +
+            '</div>' +
+            '<span class="source-status ' + s.status + '">' + s.status + '</span>' +
+        '</div>';
+    }
+    container.innerHTML = html;
+}
+
 // ── Toggle event handlers ──────────
 
-// TYPE toggles (multi-select: click to toggle on/off)
+// DATE STATUS toggles (multi-select)
+var dateStatusBtns = document.querySelectorAll('.tog[data-date-status]');
+for (var i = 0; i < dateStatusBtns.length; i++) {
+    (function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var s = btn.getAttribute('data-date-status');
+            if (btn.classList.contains('on')) {
+                btn.classList.remove('on');
+                if (s === 'confirmed') showConfirmed = false;
+                if (s === 'tbd') showTbd = false;
+            } else {
+                btn.classList.add('on');
+                if (s === 'confirmed') showConfirmed = true;
+                if (s === 'tbd') showTbd = true;
+            }
+            render();
+        });
+    })(dateStatusBtns[i]);
+}
+
+// TYPE toggles (multi-select)
 var typeBtns = document.querySelectorAll('.tog[data-type]');
 for (var i = 0; i < typeBtns.length; i++) {
     (function(btn) {
@@ -369,7 +524,7 @@ for (var i = 0; i < typeBtns.length; i++) {
     })(typeBtns[i]);
 }
 
-// LOCATION toggles (multi-select: click to toggle on/off)
+// LOCATION toggles (multi-select)
 var locBtns = document.querySelectorAll('.tog[data-loc]');
 for (var i = 0; i < locBtns.length; i++) {
     (function(btn) {
@@ -388,21 +543,16 @@ for (var i = 0; i < locBtns.length; i++) {
     })(locBtns[i]);
 }
 
-// TIME toggles (single-select: only one active)
-var timeBtns = document.querySelectorAll('.tog[data-time]');
-for (var i = 0; i < timeBtns.length; i++) {
-    (function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            for (var j = 0; j < timeBtns.length; j++) {
-                timeBtns[j].classList.remove('on');
-            }
-            btn.classList.add('on');
-            activeTime = btn.getAttribute('data-time');
-            render();
-        });
-    })(timeBtns[i]);
-}
+// SOURCES modal
+document.getElementById('sources-btn').addEventListener('click', function() {
+    document.getElementById('sources-modal').classList.add('open');
+});
+document.getElementById('modal-close').addEventListener('click', function() {
+    document.getElementById('sources-modal').classList.remove('open');
+});
+document.getElementById('sources-modal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+});
 
 load();
 </script>
