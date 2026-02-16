@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Thailand Race Finder</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -31,7 +32,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .hdr-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .hdr h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; white-space: nowrap; }
 .hdr h1 span { color: var(--accent); }
-.hdr-stats { display: flex; gap: 16px; align-items: center; }
+.hdr-stats { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .hdr-stats .pill {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px; font-weight: 500;
@@ -54,38 +55,41 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     letter-spacing: 0.08em; color: var(--text-3);
     min-width: 60px;
 }
+
+/* ── Toggle buttons ────────── */
 .tog {
     padding: 5px 14px; border-radius: 100px;
-    border: 1px solid var(--border); background: var(--surface);
+    border: 1.5px solid var(--border); background: var(--surface);
     color: var(--text-3); font-family: 'Outfit', sans-serif;
     font-size: 12px; font-weight: 500; cursor: pointer;
     transition: all 0.15s ease; user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 .tog:hover { border-color: var(--border-hover); color: var(--text-2); }
-.tog.on { background: var(--text); border-color: var(--text); color: #fff; }
 .tog .emoji { margin-right: 3px; font-size: 13px; }
 
-/* Type-specific active colors */
-.tog.on[data-type="run"] { background: #2563eb; border-color: #2563eb; }
-.tog.on[data-type="trail"] { background: #16a34a; border-color: #16a34a; }
-.tog.on[data-type="triathlon"] { background: #ea580c; border-color: #ea580c; }
-.tog.on[data-type="cycling"] { background: #dc2626; border-color: #dc2626; }
-.tog.on[data-type="swim"] { background: #0891b2; border-color: #0891b2; }
-.tog.on[data-type="obstacle"] { background: #7c3aed; border-color: #7c3aed; }
-.tog.on[data-type="other"] { background: #6b7280; border-color: #6b7280; }
+/* ON state — all toggles */
+.tog.on { color: #fff; }
 
-/* Location active colors */
-.tog.on[data-loc="Chiang Mai"] { background: #b45309; border-color: #b45309; }
-.tog.on[data-loc="Bangkok"] { background: #0f766e; border-color: #0f766e; }
-.tog.on[data-loc="Other"] { background: #6b7280; border-color: #6b7280; }
+/* Type ON colors */
+.tog[data-type="run"].on { background: #2563eb; border-color: #2563eb; }
+.tog[data-type="trail"].on { background: #16a34a; border-color: #16a34a; }
+.tog[data-type="triathlon"].on { background: #ea580c; border-color: #ea580c; }
+.tog[data-type="cycling"].on { background: #dc2626; border-color: #dc2626; }
+.tog[data-type="swim"].on { background: #0891b2; border-color: #0891b2; }
+.tog[data-type="obstacle"].on { background: #7c3aed; border-color: #7c3aed; }
+.tog[data-type="other"].on { background: #6b7280; border-color: #6b7280; }
 
-/* Time filter */
-.tog.on[data-time] { background: var(--text); border-color: var(--text); }
+/* Location ON colors */
+.tog[data-loc="Chiang Mai"].on { background: #b45309; border-color: #b45309; }
+.tog[data-loc="Bangkok"].on { background: #0f766e; border-color: #0f766e; }
+.tog[data-loc="Other"].on { background: #6b7280; border-color: #6b7280; }
 
-.filter-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+/* Time ON color */
+.tog[data-time].on { background: var(--text); border-color: var(--text); }
 
 /* ── Cards ─────────────────── */
-.grid-wrap { max-width: 1200px; margin: 20px auto 0; padding: 0 24px 80px; }
+.main-area { max-width: 1200px; margin: 20px auto 0; padding: 0 24px 80px; }
 .month-group { margin-bottom: 28px; }
 .month-label {
     font-size: 13px; font-weight: 700; text-transform: uppercase;
@@ -114,11 +118,19 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 }
 .cbadge.upcoming { background: #22c55e; color: #fff; }
 .cbadge.past { background: #94a3b8; color: #fff; }
+.src-tag {
+    position: absolute; top: 8px; right: 8px;
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 9px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0,0,0,0.5); color: #fff;
+    text-transform: uppercase;
+}
 .card-body { padding: 12px 14px 8px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .card-date { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .card-title { font-size: 14px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
 .card-meta { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
-.card-loc { font-size: 12px; color: var(--text-2); display: flex; gap: 4px; align-items: flex-start; margin-top: auto; }
+.card-loc { font-size: 12px; color: var(--text-2); display: flex; gap: 4px; align-items: flex-start; margin-top: auto; padding-top: 4px; }
 .card-loc svg { flex-shrink: 0; margin-top: 1px; }
 .card-foot { padding: 8px 14px; border-top: 1px solid var(--tag-bg); }
 .card-cta { font-size: 11px; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px; }
@@ -137,7 +149,6 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .type-tag.obstacle { background: #ede9fe; color: #6d28d9; }
 .type-tag.other { background: var(--tag-bg); color: var(--text-3); }
 
-/* Province badge */
 .prov-tag {
     display: inline-block; padding: 2px 7px; border-radius: 4px;
     font-size: 9px; font-weight: 600; font-family: 'JetBrains Mono', monospace;
@@ -145,18 +156,9 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 }
 
 .no-results {
-    display: none; text-align: center; padding: 60px 20px;
+    text-align: center; padding: 60px 20px;
     color: var(--text-3); font-size: 15px;
-}
-
-/* ── Source badge ────────────── */
-.src-tag {
-    position: absolute; top: 8px; right: 8px;
-    padding: 2px 6px; border-radius: 4px;
-    font-size: 9px; font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-    background: rgba(0,0,0,0.5); color: #fff;
-    text-transform: uppercase;
+    display: none;
 }
 
 /* ── Responsive ────────────── */
@@ -165,6 +167,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     .race-grid { grid-template-columns: 1fr; }
     .filter-row { gap: 5px; }
     .tog { padding: 4px 10px; font-size: 11px; }
+    .filter-label { min-width: 50px; font-size: 10px; }
 }
 </style>
 </head>
@@ -183,16 +186,13 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 </div>
 
 <div class="filter-bar">
-    <!-- Time filter -->
-    <div class="filter-row">
+    <div class="filter-row" id="time-row">
         <span class="filter-label">Time</span>
         <button class="tog on" data-time="all">All</button>
         <button class="tog" data-time="upcoming">Upcoming</button>
         <button class="tog" data-time="past">Past</button>
     </div>
-
-    <!-- Type toggles -->
-    <div class="filter-row">
+    <div class="filter-row" id="type-row">
         <span class="filter-label">Type</span>
         <button class="tog on" data-type="run"><span class="emoji">🏃</span>Run</button>
         <button class="tog on" data-type="trail"><span class="emoji">⛰️</span>Trail</button>
@@ -202,9 +202,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
         <button class="tog on" data-type="obstacle"><span class="emoji">🏋️</span>OCR</button>
         <button class="tog on" data-type="other"><span class="emoji">🏁</span>Other</button>
     </div>
-
-    <!-- Location toggles -->
-    <div class="filter-row">
+    <div class="filter-row" id="loc-row">
         <span class="filter-label">Location</span>
         <button class="tog on" data-loc="Chiang Mai"><span class="emoji">🌿</span>Chiang Mai</button>
         <button class="tog on" data-loc="Bangkok"><span class="emoji">🏙️</span>Bangkok</button>
@@ -212,18 +210,17 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     </div>
 </div>
 
-<div class="grid-wrap" id="grid-wrap">
-    <div class="no-results" id="no-results">No races match your filters. Try turning some back on.</div>
-</div>
+<!-- no-results is OUTSIDE grid so it never gets destroyed -->
+<div class="no-results" id="no-results">No races match your filters. Try turning some back on.</div>
+
+<div class="main-area" id="grid-wrap"></div>
 
 <script>
-const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
-const SH=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const TL={run:"Run",trail:"Trail",triathlon:"Tri",cycling:"Cycling",swim:"Swim",obstacle:"OCR",other:"Other"};
+const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TL = {run:"Run",trail:"Trail",triathlon:"Tri",cycling:"Cycling",swim:"Swim",obstacle:"OCR",other:"Other"};
 
-let allRaces=[];
-
-// Filter state: sets of active values
+let allRaces = [];
 let activeTypes = new Set(["run","trail","triathlon","cycling","swim","obstacle","other"]);
 let activeLocs = new Set(["Chiang Mai","Bangkok","Other"]);
 let activeTime = "all";
@@ -234,141 +231,178 @@ function locBucket(province) {
     return "Other";
 }
 
-async function load(){
+async function load() {
     try {
         const r = await fetch('./races.json');
-        if(!r.ok) throw 0;
+        if (!r.ok) throw new Error('fetch failed');
         const d = await r.json();
         allRaces = d.races || [];
-        if(d.lastUpdated){
+        if (d.lastUpdated) {
             const dt = new Date(d.lastUpdated);
             document.getElementById('last-updated').innerHTML =
-                '<span class="live-dot"></span>Updated ' + dt.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+                '<span class="live-dot"></span>Updated ' +
+                dt.toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
         }
         updateStats();
         render();
     } catch(e) {
-        document.getElementById('grid-wrap').innerHTML='<div class="no-results" style="display:block">Failed to load race data.</div>';
+        document.getElementById('grid-wrap').innerHTML =
+            '<div style="text-align:center;padding:60px 20px;color:#999">Failed to load race data.</div>';
     }
 }
 
-function updateStats(){
-    const t = new Date().toISOString().split('T')[0];
+function updateStats() {
+    const today = new Date().toISOString().split('T')[0];
     document.getElementById('total-count').textContent = allRaces.length;
-    document.getElementById('upcoming-count').textContent = allRaces.filter(r=>r.date>=t).length;
+    document.getElementById('upcoming-count').textContent = allRaces.filter(r => r.date >= today).length;
 }
 
-function filtered(){
-    const t = new Date().toISOString().split('T')[0];
+function getFiltered() {
+    const today = new Date().toISOString().split('T')[0];
     return allRaces.filter(r => {
-        // Time
-        if(activeTime==='upcoming' && r.date<t) return false;
-        if(activeTime==='past' && r.date>=t) return false;
-        // Type
+        if (activeTime === 'upcoming' && r.date < today) return false;
+        if (activeTime === 'past' && r.date >= today) return false;
         const rt = r.type || 'other';
-        if(!activeTypes.has(rt)) return false;
-        // Location
+        if (!activeTypes.has(rt)) return false;
         const lb = locBucket(r.province || 'Other');
-        if(!activeLocs.has(lb)) return false;
+        if (!activeLocs.has(lb)) return false;
         return true;
     });
 }
 
-function card(race){
-    const t = new Date().toISOString().split('T')[0];
-    const up = race.date>=t;
-    const d = new Date(race.date+'T00:00:00');
-    const ds = SH[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+function card(race) {
+    const today = new Date().toISOString().split('T')[0];
+    const up = race.date >= today;
+    const d = new Date(race.date + 'T00:00:00');
+    const ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
     const fb = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f0eeeb' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
-    const rt = race.type||'other';
-    const tb = `<span class="type-tag ${rt}">${TL[rt]||rt}</span>`;
+    const rt = race.type || 'other';
     const prov = race.province || 'Thailand';
-    const dist = (race.distances&&race.distances.length) ? `<div class="card-meta">${race.distances.join(' · ')}</div>` : '';
-    const src = race.source ? `<span class="src-tag">${race.source}</span>` : '';
+    const dist = (race.distances && race.distances.length) ? '<div class="card-meta">' + race.distances.join(' · ') + '</div>' : '';
+    const src = race.source ? '<span class="src-tag">' + race.source + '</span>' : '';
     const imgSrc = race.image || fb;
 
-    return `<a class="card" href="${race.url}" target="_blank" rel="noopener">
-        <div class="card-img">
-            <img src="${imgSrc}" alt="" loading="lazy" onerror="this.src='${fb}'"/>
-            <span class="cbadge ${up?'upcoming':'past'}">${up?'Upcoming':'Past'}</span>
-            ${src}
-        </div>
-        <div class="card-body">
-            <div class="card-date">${tb} <span class="prov-tag">${prov}</span> ${ds}</div>
-            <div class="card-title">${race.name}</div>
-            ${dist}
-            <div class="card-loc">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>${race.location||prov}</span>
-            </div>
-        </div>
-        <div class="card-foot">
-            <span class="card-cta">View details <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></span>
-        </div>
-    </a>`;
+    return '<a class="card" href="' + race.url + '" target="_blank" rel="noopener">' +
+        '<div class="card-img">' +
+            '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'' + fb + '\'"/>' +
+            '<span class="cbadge ' + (up ? 'upcoming' : 'past') + '">' + (up ? 'Upcoming' : 'Past') + '</span>' +
+            src +
+        '</div>' +
+        '<div class="card-body">' +
+            '<div class="card-date"><span class="type-tag ' + rt + '">' + (TL[rt] || rt) + '</span> <span class="prov-tag">' + prov + '</span> ' + ds + '</div>' +
+            '<div class="card-title">' + race.name + '</div>' +
+            dist +
+            '<div class="card-loc">' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+                '<span>' + (race.location || prov) + '</span>' +
+            '</div>' +
+        '</div>' +
+        '<div class="card-foot">' +
+            '<span class="card-cta">View details <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></span>' +
+        '</div>' +
+    '</a>';
 }
 
-function render(){
-    const w = document.getElementById('grid-wrap');
-    const nr = document.getElementById('no-results');
-    const list = filtered();
+function render() {
+    var gridEl = document.getElementById('grid-wrap');
+    var noEl = document.getElementById('no-results');
+    var list = getFiltered();
 
     document.getElementById('showing-count').textContent = list.length;
 
-    if(!list.length){ w.innerHTML=''; nr.style.display='block'; return; }
-    nr.style.display='none';
+    if (list.length === 0) {
+        gridEl.innerHTML = '';
+        noEl.style.display = 'block';
+        return;
+    }
 
-    const g = {};
-    list.forEach(r => { const k=r.date.substring(0,7); (g[k]=g[k]||[]).push(r); });
+    noEl.style.display = 'none';
 
-    let h = '';
-    Object.keys(g).sort().forEach(k => {
-        const [y,m] = k.split('-');
-        h += `<div class="month-group"><div class="month-label">${MO[parseInt(m)-1]} ${y}</div><div class="race-grid">`;
-        g[k].forEach(r => h += card(r));
-        h += '</div></div>';
-    });
-    w.innerHTML = h;
-    w.querySelectorAll('.card').forEach((c,i) => setTimeout(()=>c.classList.add('visible'), Math.min(i*30, 600)));
+    // Group by month
+    var groups = {};
+    for (var i = 0; i < list.length; i++) {
+        var key = list[i].date.substring(0, 7);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(list[i]);
+    }
+
+    var html = '';
+    var keys = Object.keys(groups).sort();
+    for (var k = 0; k < keys.length; k++) {
+        var ym = keys[k].split('-');
+        html += '<div class="month-group"><div class="month-label">' + MO[parseInt(ym[1]) - 1] + ' ' + ym[0] + '</div><div class="race-grid">';
+        for (var j = 0; j < groups[keys[k]].length; j++) {
+            html += card(groups[keys[k]][j]);
+        }
+        html += '</div></div>';
+    }
+
+    gridEl.innerHTML = html;
+
+    // Animate cards in
+    var cards = gridEl.querySelectorAll('.card');
+    for (var c = 0; c < cards.length; c++) {
+        (function(el, delay) {
+            setTimeout(function() { el.classList.add('visible'); }, delay);
+        })(cards[c], Math.min(c * 30, 600));
+    }
 }
 
-// ── Toggle handlers ──────────
-document.querySelectorAll('.tog[data-type]').forEach(b => {
-    b.addEventListener('click', () => {
-        const t = b.dataset.type;
-        if(b.classList.contains('on')){
-            b.classList.remove('on');
-            activeTypes.delete(t);
-        } else {
-            b.classList.add('on');
-            activeTypes.add(t);
-        }
-        render();
-    });
-});
+// ── Toggle event handlers ──────────
 
-document.querySelectorAll('.tog[data-loc]').forEach(b => {
-    b.addEventListener('click', () => {
-        const l = b.dataset.loc;
-        if(b.classList.contains('on')){
-            b.classList.remove('on');
-            activeLocs.delete(l);
-        } else {
-            b.classList.add('on');
-            activeLocs.add(l);
-        }
-        render();
-    });
-});
+// TYPE toggles (multi-select: click to toggle on/off)
+var typeBtns = document.querySelectorAll('.tog[data-type]');
+for (var i = 0; i < typeBtns.length; i++) {
+    (function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var t = btn.getAttribute('data-type');
+            if (btn.classList.contains('on')) {
+                btn.classList.remove('on');
+                activeTypes.delete(t);
+            } else {
+                btn.classList.add('on');
+                activeTypes.add(t);
+            }
+            render();
+        });
+    })(typeBtns[i]);
+}
 
-document.querySelectorAll('.tog[data-time]').forEach(b => {
-    b.addEventListener('click', () => {
-        document.querySelectorAll('.tog[data-time]').forEach(x => x.classList.remove('on'));
-        b.classList.add('on');
-        activeTime = b.dataset.time;
-        render();
-    });
-});
+// LOCATION toggles (multi-select: click to toggle on/off)
+var locBtns = document.querySelectorAll('.tog[data-loc]');
+for (var i = 0; i < locBtns.length; i++) {
+    (function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var l = btn.getAttribute('data-loc');
+            if (btn.classList.contains('on')) {
+                btn.classList.remove('on');
+                activeLocs.delete(l);
+            } else {
+                btn.classList.add('on');
+                activeLocs.add(l);
+            }
+            render();
+        });
+    })(locBtns[i]);
+}
+
+// TIME toggles (single-select: only one active)
+var timeBtns = document.querySelectorAll('.tog[data-time]');
+for (var i = 0; i < timeBtns.length; i++) {
+    (function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            for (var j = 0; j < timeBtns.length; j++) {
+                timeBtns[j].classList.remove('on');
+            }
+            btn.classList.add('on');
+            activeTime = btn.getAttribute('data-time');
+            render();
+        });
+    })(timeBtns[i]);
+}
 
 load();
 </script>
