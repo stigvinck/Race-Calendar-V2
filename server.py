@@ -33,7 +33,7 @@ from scrapers.checkrace import scrape as scrape_checkrace
 from scrapers.racethairun import scrape as scrape_racethairun
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.8.4"
+VERSION = "0.8.5"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -48,7 +48,7 @@ PING_INTERVAL = 10 * 60
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
     {
-        "version": "0.8.4",
+        "version": "0.8.5",
         "date": "2026-02-17",
         "changes": [
             "Checkrace scraper now uses official API — returns all events with full details",

@@ -5,7 +5,8 @@ Returns all events with full details: names (EN/TH), dates, provinces,
 distances, images, and registration status.
 """
 
-import requests
+import json
+import urllib.request
 from datetime import datetime, timezone
 
 API_URL = "https://run.checkrace.com/api/app/eventController/listEventByEventType"
@@ -47,17 +48,18 @@ def scrape():
     now = datetime.now(timezone.utc)
 
     try:
-        resp = requests.post(
+        payload = json.dumps({"eventType": "", "registerStep": {"listStep": []}}).encode("utf-8")
+        req = urllib.request.Request(
             API_URL,
-            json={"eventType": "", "registerStep": {"listStep": []}},
+            data=payload,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             },
-            timeout=30,
+            method="POST",
         )
-        resp.raise_for_status()
-        data = resp.json()
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         print(f"    [Checkrace] API error: {e}")
         return races
