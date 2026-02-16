@@ -26,94 +26,124 @@ from scrapers.xrace import scrape as scrape_xrace
 from scrapers.oceanman import scrape as scrape_ocean
 from scrapers.ai_enrich import enrich_all, is_available as ai_available
 
+# ── Version ──────────────────────────────────────
+VERSION = "0.4.0"
+
+# ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL_HOURS", 6)) * 3600
 RACES_PATH = os.path.join(DATA_DIR, "public", "races.json")
+STATUS_PATH = os.path.join(DATA_DIR, "public", "scrape-status.json")
 
-# Set this in Render environment variables
 RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
-PING_INTERVAL = 10 * 60  # 10 minutes
+PING_INTERVAL = 10 * 60
 
-# ── Source registry (shown in frontend modal) ──
+# ── Changelog ────────────────────────────────────
+CHANGELOG = [
+    {
+        "version": "0.4.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Added version numbering + changelog",
+            "Live scrape status indicator on frontend",
+            "AI enrichment module (Claude Sonnet) — translates Thai names, deduplicates, improves classification",
+            "9 active scrapers: Runlah, GoToRace, JogAndJoy, Thai.Run, Finishers, Pho3nix, CycloWorld, XRace, Oceanman",
+            "Source tag moved from card image to footer link",
+            "Toggled-off filter buttons now visually faded",
+        ]
+    },
+    {
+        "version": "0.3.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Expanded to 9 scrapers (added Pho3nix, CycloWorld, XRace, Oceanman)",
+            "Past races automatically filtered out",
+            "TBD/TBA date toggle filter",
+            "Sources popup showing all tracked sites",
+            "Self-ping keep-alive for Render free tier",
+        ]
+    },
+    {
+        "version": "0.2.0",
+        "date": "2026-02-15",
+        "changes": [
+            "Rebuilt Runlah scraper to cover all 77 Thai provinces",
+            "Rebuilt GoToRace scraper with correct pagination",
+            "Removed WorldsMarathons and Ahotu (JS-rendered SPAs)",
+            "Bilingual scraping (EN + TH) for better coverage",
+            "Province-based location detection",
+        ]
+    },
+    {
+        "version": "0.1.0",
+        "date": "2026-02-14",
+        "changes": [
+            "Initial release — Thailand Race Finder",
+            "Card-based UI with type/location/time filters",
+            "Runlah + GoToRace scrapers",
+            "Auto-scrape every 6 hours",
+        ]
+    },
+]
+
+# ── Live scrape status (shared between threads) ──
+scrape_status = {
+    "state": "idle",          # idle | scraping | done
+    "startedAt": None,
+    "currentSource": None,
+    "sourcesTotal": 0,
+    "sourcesDone": 0,
+    "racesFound": 0,
+    "lastCompleted": None,
+    "log": [],                # last few status messages
+}
+scrape_lock = threading.Lock()
+
+
+def update_status(**kwargs):
+    """Thread-safe status update."""
+    with scrape_lock:
+        scrape_status.update(kwargs)
+        # Write to a small JSON file the frontend can poll
+        try:
+            with open(STATUS_PATH, "w") as f:
+                json.dump(scrape_status, f)
+        except Exception:
+            pass
+
+
+def log_status(msg):
+    """Add a log message to scrape status."""
+    with scrape_lock:
+        scrape_status["log"].append(msg)
+        if len(scrape_status["log"]) > 20:
+            scrape_status["log"] = scrape_status["log"][-20:]
+        try:
+            with open(STATUS_PATH, "w") as f:
+                json.dump(scrape_status, f)
+        except Exception:
+            pass
+
+
+# ── Source registry ──────────────────────────────
 SOURCE_REGISTRY = [
-    {
-        "name": "Runlah",
-        "url": "runlah.com",
-        "desc": "Largest Thai running calendar — all 77 provinces scraped (EN + TH)",
-        "status": "active"
-    },
-    {
-        "name": "GoToRace",
-        "url": "gotorace.com",
-        "desc": "Curated Thailand events — road, trail, triathlon, cycling",
-        "status": "active"
-    },
-    {
-        "name": "JogAndJoy",
-        "url": "jogandjoy.com",
-        "desc": "Thailand running calendar with event listings",
-        "status": "active"
-    },
-    {
-        "name": "Thai.Run",
-        "url": "thai.run",
-        "desc": "Thai race registration platform & event calendar",
-        "status": "active"
-    },
-    {
-        "name": "Finishers",
-        "url": "finishers.com",
-        "desc": "Asia-wide race aggregator — Thailand & SEA events",
-        "status": "active"
-    },
-    {
-        "name": "Pho3nix Kids",
-        "url": "pho3nixkidsthailand.com",
-        "desc": "Kids triathlon & duathlon series across Thailand",
-        "status": "active"
-    },
-    {
-        "name": "CycloWorld",
-        "url": "cycloworld.cc",
-        "desc": "Cycling race directory — gran fondo & road races in Thailand",
-        "status": "active"
-    },
-    {
-        "name": "XRace Asia",
-        "url": "xraceasia.com",
-        "desc": "Obstacle & adventure race series — Thailand events",
-        "status": "active"
-    },
-    {
-        "name": "Oceanman",
-        "url": "oceanmanswim.com",
-        "desc": "Open water swimming events — Krabi, Thailand",
-        "status": "active"
-    },
-    {
-        "name": "WorldsMarathons",
-        "url": "worldsmarathons.com",
-        "desc": "Global marathon directory (JS-rendered — needs headless browser)",
-        "status": "blocked"
-    },
-    {
-        "name": "Ahotu",
-        "url": "ahotu.com",
-        "desc": "Global endurance calendar (JS-rendered — needs headless browser)",
-        "status": "blocked"
-    },
-    {
-        "name": "IRONMAN",
-        "url": "ironman.com",
-        "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)",
-        "status": "blocked"
-    },
+    {"name": "Runlah", "url": "runlah.com", "desc": "Largest Thai running calendar — all 77 provinces scraped (EN + TH)", "status": "active"},
+    {"name": "GoToRace", "url": "gotorace.com", "desc": "Curated Thailand events — road, trail, triathlon, cycling", "status": "active"},
+    {"name": "JogAndJoy", "url": "jogandjoy.com", "desc": "Thailand running calendar with event listings", "status": "active"},
+    {"name": "Thai.Run", "url": "thai.run", "desc": "Thai race registration platform & event calendar", "status": "active"},
+    {"name": "Finishers", "url": "finishers.com", "desc": "Asia-wide race aggregator — Thailand & SEA events", "status": "active"},
+    {"name": "Pho3nix Kids", "url": "pho3nixkidsthailand.com", "desc": "Kids triathlon & duathlon series across Thailand", "status": "active"},
+    {"name": "CycloWorld", "url": "cycloworld.cc", "desc": "Cycling race directory — gran fondo & road races in Thailand", "status": "active"},
+    {"name": "XRace Asia", "url": "xraceasia.com", "desc": "Obstacle & adventure race series — Thailand events", "status": "active"},
+    {"name": "Oceanman", "url": "oceanmanswim.com", "desc": "Open water swimming events — Krabi, Thailand", "status": "active"},
+    {"name": "WorldsMarathons", "url": "worldsmarathons.com", "desc": "Global marathon directory (JS-rendered — needs headless browser)", "status": "blocked"},
+    {"name": "Ahotu", "url": "ahotu.com", "desc": "Global endurance calendar (JS-rendered — needs headless browser)", "status": "blocked"},
+    {"name": "IRONMAN", "url": "ironman.com", "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)", "status": "blocked"},
 ]
 
 
 def is_past(date_str):
-    """Check if a date string is in the past. TBA/TBD dates are NOT past."""
     if not date_str:
         return False
     upper = date_str.upper().strip()
@@ -127,7 +157,6 @@ def is_past(date_str):
 
 
 def load_existing():
-    """Load existing races.json to preserve dateFound values."""
     try:
         with open(RACES_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -137,12 +166,10 @@ def load_existing():
 
 
 def run_all_scrapers():
-    """Run all scrapers, merge, filter past, write races.json."""
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     existing = load_existing()
     fresh_races = []
 
-    # ── Register scrapers here ─────────────────────
     scrapers = [
         ("Runlah", scrape_runlah),
         ("GoToRace", scrape_gotorace),
@@ -155,18 +182,37 @@ def run_all_scrapers():
         ("Oceanman", scrape_ocean),
     ]
 
-    for name, scraper_fn in scrapers:
+    update_status(
+        state="scraping",
+        startedAt=now,
+        currentSource=None,
+        sourcesTotal=len(scrapers),
+        sourcesDone=0,
+        racesFound=0,
+        log=[],
+    )
+    log_status("Scrape started at " + now)
+
+    for i, (name, scraper_fn) in enumerate(scrapers):
+        update_status(currentSource=name, sourcesDone=i)
+        log_status("Scraping " + name + "...")
         try:
             races = scraper_fn()
             print(f"  [{name}] Found {len(races)} races")
+            log_status(name + ": " + str(len(races)) + " races")
             fresh_races.extend(races)
+            update_status(racesFound=len(fresh_races))
         except Exception as e:
             print(f"  [{name}] ERROR: {e}")
+            log_status(name + ": ERROR - " + str(e)[:80])
 
-    # ── AI Enrichment (optional — needs ANTHROPIC_API_KEY) ──
+    update_status(currentSource="AI Enrichment", sourcesDone=len(scrapers))
+
+    # AI Enrichment
     ai_used = False
     ai_stats = {}
     if ai_available():
+        log_status("Running AI enrichment...")
         try:
             before_count = len(fresh_races)
             fresh_races = enrich_all(fresh_races)
@@ -178,39 +224,35 @@ def run_all_scrapers():
                 "duplicatesRemoved": before_count - after_count,
                 "model": "claude-sonnet-4-20250514",
             }
+            log_status("AI: processed " + str(before_count) + ", removed " + str(before_count - after_count) + " dupes")
         except Exception as e:
-            print(f"  [AI] Enrichment failed (continuing without): {e}")
+            print(f"  [AI] Enrichment failed: {e}")
             ai_stats = {"enabled": True, "error": str(e)}
+            log_status("AI: error - " + str(e)[:80])
     else:
         print("  [AI] Skipped — set ANTHROPIC_API_KEY to enable")
         ai_stats = {"enabled": False}
 
-    # Merge: preserve dateFound, update lastSeen
+    # Merge
     merged = {}
     for r in fresh_races:
         rid = r.get("id", "")
         if not rid:
             continue
-
-        # Skip past races
         if is_past(r.get("date", "")):
             continue
-
         if rid in existing:
             r["dateFound"] = existing[rid].get("dateFound", now)
         else:
             r["dateFound"] = now
-
         r["lastSeen"] = now
         merged[rid] = r
 
-    # Keep existing races that weren't in this scrape (if not past)
     for rid, old_race in existing.items():
         if rid not in merged and not is_past(old_race.get("date", "")):
             old_race.setdefault("status", "unknown")
             merged[rid] = old_race
 
-    # Sort by date (TBA at the end)
     def sort_key(r):
         d = r.get("date", "")
         if not d or d.upper() in ("TBA", "TBD", "UNKNOWN"):
@@ -220,11 +262,13 @@ def run_all_scrapers():
     races_list = sorted(merged.values(), key=sort_key)
 
     output = {
+        "version": VERSION,
         "lastUpdated": now,
         "totalSources": len(scrapers),
         "aiEnriched": ai_used,
         "aiStats": ai_stats,
         "sources": SOURCE_REGISTRY,
+        "changelog": CHANGELOG,
         "races": races_list,
     }
 
@@ -232,14 +276,22 @@ def run_all_scrapers():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     past_filtered = len(fresh_races) - len([r for r in fresh_races if not is_past(r.get("date", ""))])
-    print(f"✓ Saved {len(races_list)} races ({len(fresh_races)} fresh, {past_filtered} past filtered out)")
+    print(f"✓ v{VERSION} — Saved {len(races_list)} races ({len(fresh_races)} fresh, {past_filtered} past filtered)")
+
+    update_status(
+        state="idle",
+        currentSource=None,
+        sourcesDone=len(scrapers),
+        racesFound=len(races_list),
+        lastCompleted=now,
+    )
+    log_status("Done — " + str(len(races_list)) + " races saved")
 
 
 def scraper_loop():
-    """Run scrapers immediately on startup, then on interval."""
     while True:
         print(f"\n{'='*50}")
-        print(f"Scraping at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+        print(f"v{VERSION} — Scraping at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
         print(f"{'='*50}")
         run_all_scrapers()
         print(f"Next scrape in {SCRAPE_INTERVAL // 3600} hours\n")
@@ -247,12 +299,9 @@ def scraper_loop():
 
 
 def keep_alive_loop():
-    """Ping ourselves every 10 min to prevent Render free-plan spin-down."""
     url = RENDER_URL
     if not url:
         print("⚠ RENDER_EXTERNAL_URL not set — self-ping disabled.")
-        print("  Set it in Render dashboard → Environment → Add Variable:")
-        print("  RENDER_EXTERNAL_URL = https://your-app.onrender.com")
         return
 
     ping_url = url.rstrip("/") + "/races.json"
@@ -261,9 +310,7 @@ def keep_alive_loop():
     while True:
         time.sleep(PING_INTERVAL)
         try:
-            req = urllib.request.Request(ping_url, headers={
-                "User-Agent": "self-ping/keep-alive"
-            })
+            req = urllib.request.Request(ping_url, headers={"User-Agent": "self-ping/keep-alive"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 _ = resp.read(100)
         except Exception:
@@ -275,45 +322,45 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=os.path.join(DATA_DIR, "public"), **kwargs)
 
     def do_GET(self):
-        # Status endpoint: /api/status
         if self.path == "/api/status":
             self._handle_status()
             return
-
-        # Default: serve static files
         super().do_GET()
 
     def _handle_status(self):
-        """Return current status: race count, last update, AI usage."""
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-
         try:
             with open(RACES_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
             status = {
+                "version": VERSION,
                 "totalRaces": len(data.get("races", [])),
                 "lastUpdated": data.get("lastUpdated", "never"),
                 "aiEnriched": data.get("aiEnriched", False),
                 "aiStats": data.get("aiStats", {}),
                 "totalSources": data.get("totalSources", 0),
                 "apiKeySet": ai_available(),
+                "scrape": scrape_status,
             }
         except Exception:
-            status = {"error": "No data yet", "apiKeySet": ai_available()}
-
+            status = {"version": VERSION, "error": "No data yet", "apiKeySet": ai_available(), "scrape": scrape_status}
         self.wfile.write(json.dumps(status, indent=2).encode("utf-8"))
 
     def log_message(self, format, *args):
         msg = str(args)
-        # Log API calls and errors, suppress routine static file requests
         if "/api/" in str(args[0]) or "404" in msg or "500" in msg:
             super().log_message(format, *args)
 
 
 if __name__ == "__main__":
+    print(f"🏃 Thailand Race Finder v{VERSION}")
+
+    # Write initial scrape status
+    update_status(state="starting", startedAt=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+
     t1 = threading.Thread(target=scraper_loop, daemon=True)
     t1.start()
 

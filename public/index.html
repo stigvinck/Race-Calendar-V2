@@ -9,83 +9,47 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root {
-    --bg: #faf9f7;
-    --surface: #fff;
-    --text: #1a1a1a;
-    --text-2: #555;
-    --text-3: #999;
-    --border: #e8e6e1;
-    --border-hover: #ccc;
-    --accent: #2563eb;
-    --tag-bg: #f0eeeb;
+    --bg: #faf9f7; --surface: #fff; --text: #1a1a1a; --text-2: #555;
+    --text-3: #999; --border: #e8e6e1; --border-hover: #ccc;
+    --accent: #2563eb; --tag-bg: #f0eeeb;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
-/* ── Header ─────────────────── */
-.hdr {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(250,249,247,0.92); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
-}
+.hdr { position: sticky; top: 0; z-index: 100; background: rgba(250,249,247,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 12px 24px; }
 .hdr-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .hdr h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; white-space: nowrap; }
 .hdr h1 span { color: var(--accent); }
-.hdr-stats { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-.hdr-stats .pill {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; font-weight: 500;
-    padding: 4px 10px; border-radius: 6px;
-    background: var(--tag-bg); color: var(--text-2);
-}
+.hdr-stats { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.hdr-stats .pill { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; background: var(--tag-bg); color: var(--text-2); }
 .hdr-stats .pill strong { color: var(--text); }
+.hdr-stats .pill.green { background: #dcfce7; color: #166534; }
 #last-updated { font-size: 11px; color: var(--text-3); }
 .live-dot { display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.hdr-btn { padding: 4px 10px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+.hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Sources button */
-.sources-btn {
-    padding: 4px 10px; border-radius: 6px;
-    border: 1.5px solid var(--border); background: var(--surface);
-    color: var(--text-2); font-family: 'Outfit', sans-serif;
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: all 0.15s ease;
-}
-.sources-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* ── Scrape Status Bar ───── */
+.scrape-bar { max-width: 1200px; margin: 0 auto; padding: 10px 24px 0; }
+.scrape-bar-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; color: #1e40af; }
+.scrape-bar-inner.idle { background: var(--tag-bg); border-color: var(--border); color: var(--text-3); }
+.scrape-spinner { width: 14px; height: 14px; border: 2px solid #93c5fd; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.scrape-progress { flex: 1; }
+.scrape-progress strong { color: #1e3a5f; }
+.scrape-bar-inner.idle .scrape-progress { color: var(--text-3); }
 
-/* ── Filter Bar ────────────── */
-.filter-bar {
-    max-width: 1200px; margin: 16px auto 0; padding: 0 24px;
-    display: flex; flex-direction: column; gap: 10px;
-}
+/* ── Filter Bar ──────────── */
+.filter-bar { max-width: 1200px; margin: 12px auto 0; padding: 0 24px; display: flex; flex-direction: column; gap: 10px; }
 .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filter-label {
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--text-3);
-    min-width: 60px;
-}
-
-/* ── Toggle buttons ────────── */
-.tog {
-    padding: 5px 14px; border-radius: 100px;
-    border: 1.5px solid var(--border); background: var(--surface);
-    color: var(--text-3); font-family: 'Outfit', sans-serif;
-    font-size: 12px; font-weight: 500; cursor: pointer;
-    transition: all 0.15s ease; user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
+.filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); min-width: 60px; }
+.tog { padding: 5px 14px; border-radius: 100px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-3); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
 .tog:hover { border-color: var(--border-hover); color: var(--text-2); }
 .tog .emoji { margin-right: 3px; font-size: 13px; }
-
-/* OFF state — faded grey */
 .tog:not(.on) { opacity: 0.45; background: #f0eeeb; border-color: #e0ddd8; color: #aaa; }
 .tog:not(.on):hover { opacity: 0.7; }
-
-/* ON state — all toggles */
 .tog.on { color: #fff; }
-
-/* Type ON colors */
 .tog[data-type="run"].on { background: #2563eb; border-color: #2563eb; }
 .tog[data-type="trail"].on { background: #16a34a; border-color: #16a34a; }
 .tog[data-type="triathlon"].on { background: #ea580c; border-color: #ea580c; }
@@ -93,44 +57,23 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .tog[data-type="swim"].on { background: #0891b2; border-color: #0891b2; }
 .tog[data-type="obstacle"].on { background: #7c3aed; border-color: #7c3aed; }
 .tog[data-type="other"].on { background: #6b7280; border-color: #6b7280; }
-
-/* Location ON colors */
 .tog[data-loc="Chiang Mai"].on { background: #b45309; border-color: #b45309; }
 .tog[data-loc="Bangkok"].on { background: #0f766e; border-color: #0f766e; }
 .tog[data-loc="Other"].on { background: #6b7280; border-color: #6b7280; }
-
-/* Date status ON colors */
 .tog[data-date-status="confirmed"].on { background: #16a34a; border-color: #16a34a; }
 .tog[data-date-status="tbd"].on { background: #d97706; border-color: #d97706; }
 
-/* ── Cards ─────────────────── */
+/* ── Cards ───────────────── */
 .main-area { max-width: 1200px; margin: 20px auto 0; padding: 0 24px 80px; }
 .month-group { margin-bottom: 28px; }
-.month-label {
-    font-size: 13px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--text-3);
-    padding-bottom: 8px; margin-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-}
+.month-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
 .race-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.card {
-    background: var(--surface); border-radius: 12px;
-    border: 1px solid var(--border);
-    text-decoration: none; color: inherit;
-    overflow: hidden; display: flex; flex-direction: column;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-    opacity: 0; transform: translateY(12px);
-}
+.card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); text-decoration: none; color: inherit; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.18s ease, box-shadow 0.18s ease; opacity: 0; transform: translateY(12px); }
 .card.visible { opacity: 1; transform: translateY(0); transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.18s ease; }
 .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 .card-img { position: relative; aspect-ratio: 2/1; overflow: hidden; background: #f0eeeb; }
 .card-img img { width: 100%; height: 100%; object-fit: cover; }
-.cbadge {
-    position: absolute; top: 8px; left: 8px;
-    padding: 3px 8px; border-radius: 4px;
-    font-size: 10px; font-weight: 700;
-    font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-}
+.cbadge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
 .cbadge.upcoming { background: #22c55e; color: #fff; }
 .cbadge.tbd { background: #d97706; color: #fff; }
 .card-body { padding: 12px 14px 8px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
@@ -141,13 +84,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .card-loc svg { flex-shrink: 0; margin-top: 1px; }
 .card-foot { padding: 8px 14px; border-top: 1px solid var(--tag-bg); }
 .card-cta { font-size: 11px; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px; }
-
-/* Type badges */
-.type-tag {
-    display: inline-block; padding: 2px 7px; border-radius: 4px;
-    font-size: 9px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase; letter-spacing: 0.5px;
-}
+.type-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; }
 .type-tag.run { background: #dbeafe; color: #1d4ed8; }
 .type-tag.trail { background: #dcfce7; color: #166534; }
 .type-tag.triathlon { background: #ffedd5; color: #c2410c; }
@@ -155,61 +92,40 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .type-tag.swim { background: #cffafe; color: #0e7490; }
 .type-tag.obstacle { background: #ede9fe; color: #6d28d9; }
 .type-tag.other { background: var(--tag-bg); color: var(--text-3); }
+.prov-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 600; font-family: 'JetBrains Mono', monospace; background: var(--tag-bg); color: var(--text-3); }
+.no-results { text-align: center; padding: 60px 20px; color: var(--text-3); font-size: 15px; display: none; }
 
-.prov-tag {
-    display: inline-block; padding: 2px 7px; border-radius: 4px;
-    font-size: 9px; font-weight: 600; font-family: 'JetBrains Mono', monospace;
-    background: var(--tag-bg); color: var(--text-3);
-}
+/* ── Footer ──────────────── */
+.site-footer { max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; text-align: center; font-size: 11px; color: var(--text-3); }
+.site-footer a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.site-footer a:hover { text-decoration: underline; }
 
-.no-results {
-    text-align: center; padding: 60px 20px;
-    color: var(--text-3); font-size: 15px;
-    display: none;
-}
-
-/* ── Sources Modal ────────── */
-.modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4); z-index: 1000;
-    justify-content: center; align-items: center;
-}
+/* ── Modal ───────────────── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
 .modal-overlay.open { display: flex; }
-.modal {
-    background: var(--surface); border-radius: 16px;
-    max-width: 600px; width: 90%; max-height: 80vh;
-    overflow-y: auto; padding: 28px; position: relative;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-}
-.modal-close {
-    position: absolute; top: 12px; right: 12px;
-    background: none; border: none; font-size: 20px;
-    cursor: pointer; color: var(--text-3); padding: 4px 8px;
-    border-radius: 6px;
-}
+.modal { background: var(--surface); border-radius: 16px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 28px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-close { position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-3); padding: 4px 8px; border-radius: 6px; }
 .modal-close:hover { background: var(--tag-bg); color: var(--text); }
 .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 .modal .modal-sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
-.source-item {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0; border-bottom: 1px solid var(--border);
-}
+.source-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .source-item:last-child { border-bottom: none; }
 .source-info { display: flex; flex-direction: column; gap: 2px; }
 .source-name { font-size: 14px; font-weight: 600; }
 .source-url { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
 .source-desc { font-size: 12px; color: var(--text-2); }
-.source-status {
-    padding: 3px 8px; border-radius: 4px;
-    font-size: 10px; font-weight: 700;
-    font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-    flex-shrink: 0;
-}
+.source-status { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; flex-shrink: 0; }
 .source-status.active { background: #dcfce7; color: #166534; }
 .source-status.planned { background: #fef3c7; color: #92400e; }
 .source-status.blocked { background: #fee2e2; color: #b91c1c; }
+/* Changelog */
+.cl-version { margin-top: 16px; }
+.cl-version:first-of-type { margin-top: 0; }
+.cl-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.cl-header strong { font-size: 14px; }
+.cl-header span { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+.cl-list { padding-left: 18px; font-size: 13px; color: var(--text-2); line-height: 1.6; }
 
-/* ── Responsive ────────────── */
 @media (max-width: 600px) {
     .hdr-inner { flex-direction: column; align-items: flex-start; }
     .race-grid { grid-template-columns: 1fr; }
@@ -228,20 +144,29 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     <div class="hdr-stats">
         <div class="pill"><strong id="total-count">0</strong> races</div>
         <div class="pill"><strong id="showing-count">0</strong> showing</div>
-        <div class="pill" id="ai-badge" style="display:none">🤖 <strong>AI</strong></div>
+        <div class="pill green" id="ai-badge" style="display:none">🤖 <strong>AI</strong></div>
         <div id="last-updated"></div>
-        <button class="sources-btn" id="sources-btn">📡 Sources</button>
+        <button class="hdr-btn" id="sources-btn">📡 Sources</button>
+        <button class="hdr-btn" id="changelog-btn">📋 v<span id="version-num">...</span></button>
     </div>
 </div>
 </div>
 
+<!-- Scrape status bar -->
+<div class="scrape-bar" id="scrape-bar" style="display:none">
+<div class="scrape-bar-inner" id="scrape-bar-inner">
+    <div class="scrape-spinner" id="scrape-spinner"></div>
+    <div class="scrape-progress" id="scrape-progress">Starting up...</div>
+</div>
+</div>
+
 <div class="filter-bar">
-    <div class="filter-row" id="date-status-row">
+    <div class="filter-row">
         <span class="filter-label">Date</span>
         <button class="tog on" data-date-status="confirmed"><span class="emoji">✅</span>Confirmed</button>
         <button class="tog on" data-date-status="tbd"><span class="emoji">❓</span>TBD</button>
     </div>
-    <div class="filter-row" id="type-row">
+    <div class="filter-row">
         <span class="filter-label">Type</span>
         <button class="tog on" data-type="run"><span class="emoji">🏃</span>Run</button>
         <button class="tog on" data-type="trail"><span class="emoji">⛰️</span>Trail</button>
@@ -251,7 +176,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
         <button class="tog on" data-type="obstacle"><span class="emoji">🏋️</span>OCR</button>
         <button class="tog on" data-type="other"><span class="emoji">🏁</span>Other</button>
     </div>
-    <div class="filter-row" id="loc-row">
+    <div class="filter-row">
         <span class="filter-label">Location</span>
         <button class="tog on" data-loc="Chiang Mai"><span class="emoji">🌿</span>Chiang Mai</button>
         <button class="tog on" data-loc="Bangkok"><span class="emoji">🏙️</span>Bangkok</button>
@@ -259,18 +184,30 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     </div>
 </div>
 
-<!-- no-results is OUTSIDE grid so it never gets destroyed -->
 <div class="no-results" id="no-results">No races match your filters. Try turning some back on.</div>
-
 <div class="main-area" id="grid-wrap"></div>
+
+<div class="site-footer" id="footer">
+    Thailand Race Finder <span id="footer-version"></span> · Built by Stig + Molty · <a id="changelog-link">Changelog</a> · <a id="sources-link">Sources</a>
+</div>
 
 <!-- Sources Modal -->
 <div class="modal-overlay" id="sources-modal">
 <div class="modal">
-    <button class="modal-close" id="modal-close">&times;</button>
+    <button class="modal-close" onclick="document.getElementById('sources-modal').classList.remove('open')">&times;</button>
     <h2>📡 Data Sources</h2>
     <p class="modal-sub">Sites actively scraped every 6 hours for Thailand race data.</p>
     <div id="sources-list"></div>
+</div>
+</div>
+
+<!-- Changelog Modal -->
+<div class="modal-overlay" id="changelog-modal">
+<div class="modal">
+    <button class="modal-close" onclick="document.getElementById('changelog-modal').classList.remove('open')">&times;</button>
+    <h2>📋 Changelog</h2>
+    <p class="modal-sub">Version history for Thailand Race Finder.</p>
+    <div id="changelog-list"></div>
 </div>
 </div>
 
@@ -284,42 +221,74 @@ var activeTypes = new Set(["run","trail","triathlon","cycling","swim","obstacle"
 var activeLocs = new Set(["Chiang Mai","Bangkok","Other"]);
 var showConfirmed = true;
 var showTbd = true;
-
-/* ── Source registry (displayed in modal) ── */
-var SOURCES = [
-    { name: "Runlah", url: "runlah.com", desc: "Largest Thai running calendar — 77 provinces scraped", status: "active" },
-    { name: "GoToRace", url: "gotorace.com", desc: "Curated Thailand events — road, trail, tri, cycling", status: "active" },
-    { name: "JogAndJoy", url: "jogandjoy.com", desc: "Thailand running calendar & event listings", status: "active" },
-    { name: "Thai.Run", url: "thai.run", desc: "Thai race registration platform — event calendar", status: "active" },
-    { name: "Finishers", url: "finishers.com", desc: "Asia-wide race aggregator — Thailand & SEA events", status: "active" },
-    { name: "WorldsMarathons", url: "worldsmarathons.com", desc: "Global marathon directory — JS-rendered SPA", status: "blocked" },
-    { name: "Ahotu", url: "ahotu.com", desc: "Global endurance calendar — JS-rendered SPA", status: "blocked" },
-];
+var SOURCES = [];
+var CHANGELOG = [];
 
 function locBucket(province) {
     if (province === "Chiang Mai") return "Chiang Mai";
     if (province === "Bangkok") return "Bangkok";
     return "Other";
 }
-
 function isTbd(race) {
     if (!race.date) return true;
     var d = race.date.toUpperCase();
     return d === "TBA" || d === "TBD" || d === "UNKNOWN" || d === "";
 }
 
+// ── Scrape status polling ──
+var statusPollTimer = null;
+function pollScrapeStatus() {
+    fetch('./scrape-status.json?' + Date.now()).then(function(r) {
+        if (!r.ok) return;
+        return r.json();
+    }).then(function(s) {
+        if (!s) return;
+        var bar = document.getElementById('scrape-bar');
+        var inner = document.getElementById('scrape-bar-inner');
+        var prog = document.getElementById('scrape-progress');
+        var spinner = document.getElementById('scrape-spinner');
+
+        if (s.state === 'scraping' || s.state === 'starting') {
+            bar.style.display = '';
+            inner.className = 'scrape-bar-inner';
+            spinner.style.display = '';
+            if (s.state === 'starting') {
+                prog.innerHTML = '<strong>Starting up...</strong> Preparing to scrape ' + (s.sourcesTotal || '?') + ' sources';
+            } else {
+                var pct = s.sourcesTotal ? Math.round((s.sourcesDone / s.sourcesTotal) * 100) : 0;
+                var src = s.currentSource || '...';
+                prog.innerHTML = '<strong>Scraping: ' + src + '</strong> · ' + s.sourcesDone + '/' + s.sourcesTotal + ' sources · ' + s.racesFound + ' races found (' + pct + '%)';
+            }
+            // Keep polling
+            statusPollTimer = setTimeout(pollScrapeStatus, 2000);
+        } else if (s.state === 'idle' && allRaces.length === 0) {
+            // Just finished, reload data
+            bar.style.display = 'none';
+            load();
+        } else {
+            bar.style.display = 'none';
+        }
+    }).catch(function() {
+        // Status file not ready yet, keep trying
+        statusPollTimer = setTimeout(pollScrapeStatus, 3000);
+    });
+}
+
 async function load() {
     try {
-        var r = await fetch('./races.json');
+        var r = await fetch('./races.json?' + Date.now());
         if (!r.ok) throw new Error('fetch failed');
         var d = await r.json();
         allRaces = d.races || [];
+        if (d.sources && d.sources.length) SOURCES = d.sources;
+        if (d.changelog && d.changelog.length) CHANGELOG = d.changelog;
 
-        // Update sources from server if available
-        if (d.sources && d.sources.length) {
-            SOURCES = d.sources;
-        }
+        // Version
+        var ver = d.version || '?';
+        document.getElementById('version-num').textContent = ver;
+        document.getElementById('footer-version').textContent = 'v' + ver;
 
+        // Last updated
         if (d.lastUpdated) {
             var dt = new Date(d.lastUpdated);
             document.getElementById('last-updated').innerHTML =
@@ -327,29 +296,34 @@ async function load() {
                 dt.toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
         }
 
-        // Show AI badge if enrichment was used
+        // AI badge — only show when AI is ON
         var aiBadge = document.getElementById('ai-badge');
         if (d.aiEnriched) {
             var stats = d.aiStats || {};
-            var tip = 'AI-enriched: ' + (stats.racesProcessed || '?') + ' races processed';
+            var tip = 'AI-enriched: ' + (stats.racesProcessed || '?') + ' processed';
             if (stats.duplicatesRemoved) tip += ', ' + stats.duplicatesRemoved + ' dupes removed';
             aiBadge.title = tip;
             aiBadge.style.display = '';
-            aiBadge.style.background = '#dcfce7';
-            aiBadge.style.color = '#166534';
-        } else if (d.aiStats && d.aiStats.enabled === false) {
-            aiBadge.title = 'AI enrichment available — set ANTHROPIC_API_KEY to enable';
-            aiBadge.textContent = '🤖 AI off';
-            aiBadge.style.display = '';
-            aiBadge.style.background = '#fee2e2';
-            aiBadge.style.color = '#b91c1c';
+        } else {
+            aiBadge.style.display = 'none';
         }
+
         updateStats();
         render();
         renderSources();
+        renderChangelog();
+
+        // If no races yet, start polling scrape status
+        if (allRaces.length === 0) {
+            document.getElementById('scrape-bar').style.display = '';
+            pollScrapeStatus();
+        } else {
+            document.getElementById('scrape-bar').style.display = 'none';
+        }
     } catch(e) {
-        document.getElementById('grid-wrap').innerHTML =
-            '<div style="text-align:center;padding:60px 20px;color:#999">Failed to load race data.</div>';
+        // No data yet — show status bar and poll
+        document.getElementById('scrape-bar').style.display = '';
+        pollScrapeStatus();
     }
 }
 
@@ -359,19 +333,13 @@ function updateStats() {
 
 function getFiltered() {
     return allRaces.filter(function(r) {
-        // Date status filter
         var tbd = isTbd(r);
         if (tbd && !showTbd) return false;
         if (!tbd && !showConfirmed) return false;
-
-        // Type filter
         var rt = r.type || 'other';
         if (!activeTypes.has(rt)) return false;
-
-        // Location filter
         var lb = locBucket(r.province || 'Other');
         if (!activeLocs.has(lb)) return false;
-
         return true;
     });
 }
@@ -379,12 +347,8 @@ function getFiltered() {
 function card(race) {
     var tbd = isTbd(race);
     var ds;
-    if (tbd) {
-        ds = 'TBA';
-    } else {
-        var d = new Date(race.date + 'T00:00:00');
-        ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-    }
+    if (tbd) { ds = 'TBA'; }
+    else { var d = new Date(race.date + 'T00:00:00'); ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
     var fb = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f0eeeb' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
     var rt = race.type || 'other';
     var prov = race.province || 'Thailand';
@@ -395,22 +359,13 @@ function card(race) {
     var srcLabel = race.source ? ' on ' + race.source : '';
 
     return '<a class="card" href="' + race.url + '" target="_blank" rel="noopener">' +
-        '<div class="card-img">' +
-            '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'' + fb + '\'"/>' +
-            '<span class="cbadge ' + badgeClass + '">' + badgeText + '</span>' +
-        '</div>' +
+        '<div class="card-img"><img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.src=\'' + fb + '\'"/><span class="cbadge ' + badgeClass + '">' + badgeText + '</span></div>' +
         '<div class="card-body">' +
             '<div class="card-date"><span class="type-tag ' + rt + '">' + (TL[rt] || rt) + '</span> <span class="prov-tag">' + prov + '</span> ' + ds + '</div>' +
-            '<div class="card-title">' + race.name + '</div>' +
-            dist +
-            '<div class="card-loc">' +
-                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-                '<span>' + (race.location || prov) + '</span>' +
-            '</div>' +
+            '<div class="card-title">' + race.name + '</div>' + dist +
+            '<div class="card-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span>' + (race.location || prov) + '</span></div>' +
         '</div>' +
-        '<div class="card-foot">' +
-            '<span class="card-cta">View details' + srcLabel + ' <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></span>' +
-        '</div>' +
+        '<div class="card-foot"><span class="card-cta">View details' + srcLabel + ' <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></span></div>' +
     '</a>';
 }
 
@@ -418,155 +373,76 @@ function render() {
     var gridEl = document.getElementById('grid-wrap');
     var noEl = document.getElementById('no-results');
     var list = getFiltered();
-
     document.getElementById('showing-count').textContent = list.length;
 
-    if (list.length === 0) {
-        gridEl.innerHTML = '';
-        noEl.style.display = 'block';
-        return;
-    }
-
+    if (list.length === 0) { gridEl.innerHTML = ''; noEl.style.display = 'block'; return; }
     noEl.style.display = 'none';
 
-    // Separate TBD and dated races
-    var dated = [];
-    var tbdRaces = [];
-    for (var i = 0; i < list.length; i++) {
-        if (isTbd(list[i])) {
-            tbdRaces.push(list[i]);
-        } else {
-            dated.push(list[i]);
-        }
-    }
+    var dated = [], tbdRaces = [];
+    for (var i = 0; i < list.length; i++) { if (isTbd(list[i])) tbdRaces.push(list[i]); else dated.push(list[i]); }
 
-    // Group dated by month
     var groups = {};
-    for (var i = 0; i < dated.length; i++) {
-        var key = dated[i].date.substring(0, 7);
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(dated[i]);
-    }
+    for (var i = 0; i < dated.length; i++) { var key = dated[i].date.substring(0, 7); if (!groups[key]) groups[key] = []; groups[key].push(dated[i]); }
 
     var html = '';
     var keys = Object.keys(groups).sort();
     for (var k = 0; k < keys.length; k++) {
         var ym = keys[k].split('-');
         html += '<div class="month-group"><div class="month-label">' + MO[parseInt(ym[1]) - 1] + ' ' + ym[0] + '</div><div class="race-grid">';
-        for (var j = 0; j < groups[keys[k]].length; j++) {
-            html += card(groups[keys[k]][j]);
-        }
+        for (var j = 0; j < groups[keys[k]].length; j++) html += card(groups[keys[k]][j]);
         html += '</div></div>';
     }
-
-    // TBD section at the end
     if (tbdRaces.length > 0) {
         html += '<div class="month-group"><div class="month-label">📅 Date TBA</div><div class="race-grid">';
-        for (var t = 0; t < tbdRaces.length; t++) {
-            html += card(tbdRaces[t]);
-        }
+        for (var t = 0; t < tbdRaces.length; t++) html += card(tbdRaces[t]);
         html += '</div></div>';
     }
-
     gridEl.innerHTML = html;
-
-    // Animate cards in
     var cards = gridEl.querySelectorAll('.card');
     for (var c = 0; c < cards.length; c++) {
-        (function(el, delay) {
-            setTimeout(function() { el.classList.add('visible'); }, delay);
-        })(cards[c], Math.min(c * 30, 600));
+        (function(el, delay) { setTimeout(function() { el.classList.add('visible'); }, delay); })(cards[c], Math.min(c * 30, 600));
     }
 }
 
 function renderSources() {
-    var container = document.getElementById('sources-list');
     var html = '';
     for (var i = 0; i < SOURCES.length; i++) {
         var s = SOURCES[i];
-        html += '<div class="source-item">' +
-            '<div class="source-info">' +
-                '<div class="source-name">' + s.name + '</div>' +
-                '<div class="source-url">' + s.url + '</div>' +
-                '<div class="source-desc">' + s.desc + '</div>' +
-            '</div>' +
-            '<span class="source-status ' + s.status + '">' + s.status + '</span>' +
-        '</div>';
+        html += '<div class="source-item"><div class="source-info"><div class="source-name">' + s.name + '</div><div class="source-url">' + s.url + '</div><div class="source-desc">' + s.desc + '</div></div><span class="source-status ' + s.status + '">' + s.status + '</span></div>';
     }
-    container.innerHTML = html;
+    document.getElementById('sources-list').innerHTML = html;
 }
 
-// ── Toggle event handlers ──────────
+function renderChangelog() {
+    var html = '';
+    for (var i = 0; i < CHANGELOG.length; i++) {
+        var v = CHANGELOG[i];
+        html += '<div class="cl-version"><div class="cl-header"><strong>v' + v.version + '</strong><span>' + v.date + '</span></div><ul class="cl-list">';
+        for (var j = 0; j < v.changes.length; j++) html += '<li>' + v.changes[j] + '</li>';
+        html += '</ul></div>';
+    }
+    document.getElementById('changelog-list').innerHTML = html;
+}
 
-// DATE STATUS toggles (multi-select)
+// ── Toggle handlers ──
 var dateStatusBtns = document.querySelectorAll('.tog[data-date-status]');
-for (var i = 0; i < dateStatusBtns.length; i++) {
-    (function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var s = btn.getAttribute('data-date-status');
-            if (btn.classList.contains('on')) {
-                btn.classList.remove('on');
-                if (s === 'confirmed') showConfirmed = false;
-                if (s === 'tbd') showTbd = false;
-            } else {
-                btn.classList.add('on');
-                if (s === 'confirmed') showConfirmed = true;
-                if (s === 'tbd') showTbd = true;
-            }
-            render();
-        });
-    })(dateStatusBtns[i]);
-}
+for (var i = 0; i < dateStatusBtns.length; i++) { (function(btn) { btn.addEventListener('click', function(e) { e.preventDefault(); var s = btn.getAttribute('data-date-status'); if (btn.classList.contains('on')) { btn.classList.remove('on'); if (s === 'confirmed') showConfirmed = false; if (s === 'tbd') showTbd = false; } else { btn.classList.add('on'); if (s === 'confirmed') showConfirmed = true; if (s === 'tbd') showTbd = true; } render(); }); })(dateStatusBtns[i]); }
 
-// TYPE toggles (multi-select)
 var typeBtns = document.querySelectorAll('.tog[data-type]');
-for (var i = 0; i < typeBtns.length; i++) {
-    (function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var t = btn.getAttribute('data-type');
-            if (btn.classList.contains('on')) {
-                btn.classList.remove('on');
-                activeTypes.delete(t);
-            } else {
-                btn.classList.add('on');
-                activeTypes.add(t);
-            }
-            render();
-        });
-    })(typeBtns[i]);
-}
+for (var i = 0; i < typeBtns.length; i++) { (function(btn) { btn.addEventListener('click', function(e) { e.preventDefault(); var t = btn.getAttribute('data-type'); if (btn.classList.contains('on')) { btn.classList.remove('on'); activeTypes.delete(t); } else { btn.classList.add('on'); activeTypes.add(t); } render(); }); })(typeBtns[i]); }
 
-// LOCATION toggles (multi-select)
 var locBtns = document.querySelectorAll('.tog[data-loc]');
-for (var i = 0; i < locBtns.length; i++) {
-    (function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var l = btn.getAttribute('data-loc');
-            if (btn.classList.contains('on')) {
-                btn.classList.remove('on');
-                activeLocs.delete(l);
-            } else {
-                btn.classList.add('on');
-                activeLocs.add(l);
-            }
-            render();
-        });
-    })(locBtns[i]);
-}
+for (var i = 0; i < locBtns.length; i++) { (function(btn) { btn.addEventListener('click', function(e) { e.preventDefault(); var l = btn.getAttribute('data-loc'); if (btn.classList.contains('on')) { btn.classList.remove('on'); activeLocs.delete(l); } else { btn.classList.add('on'); activeLocs.add(l); } render(); }); })(locBtns[i]); }
 
-// SOURCES modal
-document.getElementById('sources-btn').addEventListener('click', function() {
-    document.getElementById('sources-modal').classList.add('open');
-});
-document.getElementById('modal-close').addEventListener('click', function() {
-    document.getElementById('sources-modal').classList.remove('open');
-});
-document.getElementById('sources-modal').addEventListener('click', function(e) {
-    if (e.target === this) this.classList.remove('open');
-});
+// ── Modal handlers ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeOnOverlay(e) { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); }
+document.getElementById('sources-btn').addEventListener('click', function() { openModal('sources-modal'); });
+document.getElementById('changelog-btn').addEventListener('click', function() { openModal('changelog-modal'); });
+document.getElementById('sources-link').addEventListener('click', function() { openModal('sources-modal'); });
+document.getElementById('changelog-link').addEventListener('click', function() { openModal('changelog-modal'); });
+document.getElementById('sources-modal').addEventListener('click', closeOnOverlay);
+document.getElementById('changelog-modal').addEventListener('click', closeOnOverlay);
 
 load();
 </script>
