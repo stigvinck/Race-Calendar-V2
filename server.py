@@ -24,6 +24,7 @@ from scrapers.pho3nix import scrape as scrape_pho3nix
 from scrapers.cycloworld import scrape as scrape_cyclo
 from scrapers.xrace import scrape as scrape_xrace
 from scrapers.oceanman import scrape as scrape_ocean
+from scrapers.ai_enrich import enrich_all, is_available as ai_available
 
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -162,6 +163,28 @@ def run_all_scrapers():
         except Exception as e:
             print(f"  [{name}] ERROR: {e}")
 
+    # ── AI Enrichment (optional — needs ANTHROPIC_API_KEY) ──
+    ai_used = False
+    ai_stats = {}
+    if ai_available():
+        try:
+            before_count = len(fresh_races)
+            fresh_races = enrich_all(fresh_races)
+            after_count = len(fresh_races)
+            ai_used = True
+            ai_stats = {
+                "enabled": True,
+                "racesProcessed": before_count,
+                "duplicatesRemoved": before_count - after_count,
+                "model": "claude-sonnet-4-20250514",
+            }
+        except Exception as e:
+            print(f"  [AI] Enrichment failed (continuing without): {e}")
+            ai_stats = {"enabled": True, "error": str(e)}
+    else:
+        print("  [AI] Skipped — set ANTHROPIC_API_KEY to enable")
+        ai_stats = {"enabled": False}
+
     # Merge: preserve dateFound, update lastSeen
     merged = {}
     for r in fresh_races:
@@ -199,6 +222,8 @@ def run_all_scrapers():
     output = {
         "lastUpdated": now,
         "totalSources": len(scrapers),
+        "aiEnriched": ai_used,
+        "aiStats": ai_stats,
         "sources": SOURCE_REGISTRY,
         "races": races_list,
     }
@@ -249,9 +274,42 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=os.path.join(DATA_DIR, "public"), **kwargs)
 
+    def do_GET(self):
+        # Status endpoint: /api/status
+        if self.path == "/api/status":
+            self._handle_status()
+            return
+
+        # Default: serve static files
+        super().do_GET()
+
+    def _handle_status(self):
+        """Return current status: race count, last update, AI usage."""
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+
+        try:
+            with open(RACES_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            status = {
+                "totalRaces": len(data.get("races", [])),
+                "lastUpdated": data.get("lastUpdated", "never"),
+                "aiEnriched": data.get("aiEnriched", False),
+                "aiStats": data.get("aiStats", {}),
+                "totalSources": data.get("totalSources", 0),
+                "apiKeySet": bool(API_KEY),
+            }
+        except Exception:
+            status = {"error": "No data yet", "apiKeySet": bool(API_KEY)}
+
+        self.wfile.write(json.dumps(status, indent=2).encode("utf-8"))
+
     def log_message(self, format, *args):
         msg = str(args)
-        if "404" in msg or "500" in msg:
+        # Log API calls and errors, suppress routine static file requests
+        if "/api/" in str(args[0]) or "404" in msg or "500" in msg:
             super().log_message(format, *args)
 
 

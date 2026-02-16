@@ -228,6 +228,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     <div class="hdr-stats">
         <div class="pill"><strong id="total-count">0</strong> races</div>
         <div class="pill"><strong id="showing-count">0</strong> showing</div>
+        <div class="pill" id="ai-badge" style="display:none">🤖 <strong>AI</strong></div>
         <div id="last-updated"></div>
         <button class="sources-btn" id="sources-btn">📡 Sources</button>
     </div>
@@ -324,6 +325,24 @@ async function load() {
             document.getElementById('last-updated').innerHTML =
                 '<span class="live-dot"></span>Updated ' +
                 dt.toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        }
+
+        // Show AI badge if enrichment was used
+        var aiBadge = document.getElementById('ai-badge');
+        if (d.aiEnriched) {
+            var stats = d.aiStats || {};
+            var tip = 'AI-enriched: ' + (stats.racesProcessed || '?') + ' races processed';
+            if (stats.duplicatesRemoved) tip += ', ' + stats.duplicatesRemoved + ' dupes removed';
+            aiBadge.title = tip;
+            aiBadge.style.display = '';
+            aiBadge.style.background = '#dcfce7';
+            aiBadge.style.color = '#166534';
+        } else if (d.aiStats && d.aiStats.enabled === false) {
+            aiBadge.title = 'AI enrichment available — set ANTHROPIC_API_KEY to enable';
+            aiBadge.textContent = '🤖 AI off';
+            aiBadge.style.display = '';
+            aiBadge.style.background = '#fee2e2';
+            aiBadge.style.color = '#b91c1c';
         }
         updateStats();
         render();
