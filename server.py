@@ -33,7 +33,7 @@ from scrapers.checkrace import scrape as scrape_checkrace
 from scrapers.racethairun import scrape as scrape_racethairun
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.8.3"
+VERSION = "0.8.4"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -47,6 +47,16 @@ PING_INTERVAL = 10 * 60
 
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
+    {
+        "version": "0.8.4",
+        "date": "2026-02-17",
+        "changes": [
+            "Checkrace scraper now uses official API — returns all events with full details",
+            "Rich data: English + Thai names, exact dates, provinces, distances, banner images",
+            "No more Google search index workaround — direct API call, fast and reliable",
+            "Removed google_index.py dependency for Checkrace",
+        ]
+    },
     {
         "version": "0.8.3",
         "date": "2026-02-17",

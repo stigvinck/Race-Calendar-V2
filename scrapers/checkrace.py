@@ -1,117 +1,128 @@
 """
-Checkrace scraper — uses Google's search index.
-Checkrace (run.checkrace.com) is a fully JS-rendered SPA with no public API.
-Google has already rendered these pages and indexed the content.
-We search Google for 'site:run.checkrace.com/event' and parse event data
-from the search result titles and snippets.
+Checkrace scraper — uses the official API.
+POST https://run.checkrace.com/api/app/eventController/listEventByEventType
+Returns all events with full details: names (EN/TH), dates, provinces,
+distances, images, and registration status.
 """
 
-import re
-from datetime import datetime
-from scrapers.google_index import (
-    google_search, extract_date_from_text, extract_province_from_text,
-    extract_distances_from_text, extract_year_from_text, detect_type,
-)
+import requests
+from datetime import datetime, timezone
 
+API_URL = "https://run.checkrace.com/api/app/eventController/listEventByEventType"
 BASE_URL = "https://run.checkrace.com"
+
+
+def detect_type(name):
+    """Detect race type from event name."""
+    n = name.upper()
+    if any(w in n for w in ["TRAIL", "เทรล"]):
+        return "trail"
+    if any(w in n for w in ["TRIATHLON", "TRI ", "ไตรกีฬา"]):
+        return "triathlon"
+    if any(w in n for w in ["CYCLING", "BIKE", "FONDO", "จักรยาน"]):
+        return "cycling"
+    if any(w in n for w in ["SWIM", "ว่ายน้ำ"]):
+        return "swimming"
+    if any(w in n for w in ["OBSTACLE", "SPARTAN", "XRACE"]):
+        return "obstacle"
+    if any(w in n for w in ["WALK", "เดิน"]):
+        return "walking"
+    return "run"
+
+
+def parse_distances(tickets):
+    """Extract distance list from ticket data."""
+    distances = []
+    if not tickets:
+        return distances
+    for t in tickets:
+        name = (t.get("ticketNameEn") or t.get("ticketNameTh") or "").strip()
+        if name:
+            distances.append(name)
+    return distances
 
 
 def scrape():
     races = []
-    seen_urls = set()
-    current_year = datetime.utcnow().year
+    now = datetime.now(timezone.utc)
 
-    # Search for current and upcoming events
-    queries = [
-        f"site:run.checkrace.com/event 2026",
-        f"site:run.checkrace.com/event 2025",
-        f"site:run.checkrace.com/event วิ่ง เปิดรับสมัคร",
-    ]
+    try:
+        resp = requests.post(
+            API_URL,
+            json={"eventType": "", "registerStep": {"listStep": []}},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        print(f"    [Checkrace] API error: {e}")
+        return races
 
-    all_results = []
-    for q in queries:
-        results = google_search(q, num_results=20)
-        all_results.extend(results)
-        print(f"    [Checkrace] Google '{q}' → {len(results)} results")
+    events = data.get("data", [])
+    print(f"    [Checkrace] API returned {len(events)} total events")
 
-    for r in all_results:
-        url = r["url"]
-
-        # Only process event pages
-        if "/event/" not in url or url in seen_urls:
-            continue
-        seen_urls.add(url)
-
-        # Extract slug from URL
-        slug_m = re.search(r'/event/([^/?#]+)', url)
-        if not slug_m:
-            continue
-        slug = slug_m.group(1)
-
-        title = r["title"]
-        snippet = r.get("snippet", "")
-        combined = f"{title} {snippet}"
-
-        # Clean title — remove " - Checkrace" etc
-        name = re.sub(r'\s*[-–|:]\s*(Checkrace|Run\.checkrace\.com|ระบบ.*)$', '', title, flags=re.IGNORECASE).strip()
-        if not name or len(name) < 3:
-            name = title
-
-        # Skip past events — check year
-        year = extract_year_from_text(combined)
-        if year and year < current_year:
+    for ev in events:
+        # Skip past events
+        status = (ev.get("eventStatus") or "").upper()
+        if status == "PAST":
             continue
 
-        # Extract date
-        date = extract_date_from_text(combined)
+        # Also skip if event date is in the past
+        date_str = ev.get("eventDate", "")
+        date_display = "TBA"
+        if date_str:
+            try:
+                dt = datetime.fromisoformat(date_str.replace("+00:00", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if dt < now:
+                    continue
+                date_display = dt.strftime("%Y-%m-%d")
+            except (ValueError, TypeError):
+                pass
 
-        # Extract province
-        province = extract_province_from_text(combined)
+        name_en = (ev.get("eventNameEn") or "").strip()
+        name_th = (ev.get("eventNameTh") or "").strip()
+        name = name_en or name_th or "Unknown Event"
 
-        # Extract distances
-        distances = extract_distances_from_text(combined)
+        event_url_slug = ev.get("eventUrl", "")
+        url = f"{BASE_URL}/event/{event_url_slug}" if event_url_slug else BASE_URL
 
-        # Detect type
+        province_en = (ev.get("eventProvinceEn") or "").strip()
+        province_th = (ev.get("eventProvinceTh") or "").strip()
+        location_en = (ev.get("eventLocationEn") or "").strip()
+
+        # Image
+        image = (ev.get("imageEventBannerUrl") or "").strip()
+
+        # Distances from tickets
+        distances = parse_distances(ev.get("listTicket", []))
+        # Also check listTicketDistance as fallback
+        if not distances:
+            dist_list = ev.get("listTicketDistance", [])
+            distances = [f"{d} KM" for d in dist_list if d and not d.startswith("+")]
+
         race_type = detect_type(name)
 
-        # Build race entry
         race = {
-            "id": f"checkrace-{slug}",
+            "id": f"checkrace-{ev.get('eventCode', ev.get('id', ''))}",
             "name": name,
-            "nameTh": "",
-            "date": date,
-            "location": province or "",
-            "province": province,
+            "nameTh": name_th,
+            "date": date_display,
+            "location": location_en or province_en or province_th or "",
+            "province": province_en or province_th or "",
             "type": race_type,
             "distances": distances,
             "url": url,
-            "image": "",
+            "image": image,
             "source": "Checkrace",
             "tags": [],
         }
-
-        # If name looks Thai, put it as nameTh too
-        if re.search(r'[\u0E00-\u0E7F]', name):
-            race["nameTh"] = name
-
         races.append(race)
 
-    # Deduplicate by slug (different queries may find same event)
-    deduped = {}
-    for r in races:
-        rid = r["id"]
-        if rid not in deduped:
-            deduped[rid] = r
-        else:
-            # Merge: prefer the one with more data
-            existing = deduped[rid]
-            if existing["date"] == "TBA" and r["date"] != "TBA":
-                existing["date"] = r["date"]
-            if not existing["province"] and r["province"]:
-                existing["province"] = r["province"]
-            if not existing["distances"] and r["distances"]:
-                existing["distances"] = r["distances"]
-
-    races = list(deduped.values())
-    print(f"    [Checkrace] {len(races)} events from Google index")
+    print(f"    [Checkrace] {len(races)} upcoming events")
     return races
