@@ -1,6 +1,7 @@
 """
 CM Races — Lightweight server
 Serves the static site + runs scrapers on a schedule.
+Tracks dateFound/lastSeen for each race across scrapes.
 """
 
 import os
@@ -11,62 +12,91 @@ import http.server
 import socketserver
 from datetime import datetime
 
-# Import all scrapers
 from scrapers.runlah import scrape as scrape_runlah
+from scrapers.gotorace import scrape as scrape_gotorace
 
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL_HOURS", 6)) * 3600
+RACES_PATH = os.path.join(DATA_DIR, "public", "races.json")
+
+
+def load_existing():
+    """Load existing races.json to preserve dateFound values."""
+    try:
+        with open(RACES_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {r["id"]: r for r in data.get("races", []) if "id" in r}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 def run_all_scrapers():
-    """Run all scrapers and merge results into races.json"""
-    all_races = []
+    """Run all scrapers, merge with existing data, write races.json."""
+    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    existing = load_existing()
+    fresh_races = []
 
-    # ── Add scrapers here ──────────────────────────
+    # ── Register scrapers here ─────────────────────
     scrapers = [
         ("Runlah", scrape_runlah),
-        # ("ChiangMaiLife", scrape_chiangmailife),
-        # ("Facebook", scrape_facebook),
+        ("GoToRace", scrape_gotorace),
+        # ("Ahotu", scrape_ahotu),
+        # ("Finishers", scrape_finishers),
     ]
 
     for name, scraper_fn in scrapers:
         try:
             races = scraper_fn()
             print(f"  [{name}] Found {len(races)} races")
-            all_races.extend(races)
+            fresh_races.extend(races)
         except Exception as e:
             print(f"  [{name}] ERROR: {e}")
 
-    # Deduplicate by URL
-    seen = set()
-    unique = []
-    for r in all_races:
-        if r["url"] not in seen:
-            seen.add(r["url"])
-            unique.append(r)
+    # Merge: preserve dateFound, update lastSeen
+    merged = {}
+    for r in fresh_races:
+        rid = r.get("id", "")
+        if not rid:
+            continue
+
+        if rid in existing:
+            # Preserve dateFound from previous scrape
+            r["dateFound"] = existing[rid].get("dateFound", now)
+        else:
+            # First time we've seen this race
+            r["dateFound"] = now
+
+        r["lastSeen"] = now
+        merged[rid] = r
+
+    # Also keep races from previous data that weren't in this scrape
+    # (they may have been removed from the source, but we keep them)
+    for rid, old_race in existing.items():
+        if rid not in merged:
+            old_race.setdefault("status", "unknown")
+            merged[rid] = old_race
 
     # Sort by date
-    unique.sort(key=lambda r: r.get("date", ""))
+    races_list = sorted(merged.values(), key=lambda r: r.get("date", ""))
 
-    # Write to races.json
     output = {
-        "lastUpdated": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "races": unique,
+        "lastUpdated": now,
+        "totalSources": len(scrapers),
+        "races": races_list,
     }
 
-    path = os.path.join(DATA_DIR, "public", "races.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(RACES_PATH, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ Saved {len(unique)} races to races.json at {output['lastUpdated']}")
+    print(f"✓ Saved {len(races_list)} races ({len(fresh_races)} fresh, {len(existing)} existing)")
 
 
 def scraper_loop():
-    """Run scrapers immediately, then every SCRAPE_INTERVAL seconds."""
+    """Run scrapers immediately, then on interval."""
     while True:
         print(f"\n{'='*50}")
-        print(f"Running scrapers at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+        print(f"Scraping at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
         print(f"{'='*50}")
         run_all_scrapers()
         print(f"Next scrape in {SCRAPE_INTERVAL // 3600} hours\n")
@@ -74,23 +104,18 @@ def scraper_loop():
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    """Serve files from /public, suppress noisy logs."""
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=os.path.join(DATA_DIR, "public"), **kwargs)
 
     def log_message(self, format, *args):
-        # Only log errors, not every request
         if "404" in str(args) or "500" in str(args):
             super().log_message(format, *args)
 
 
 if __name__ == "__main__":
-    # Start scraper in background thread
     t = threading.Thread(target=scraper_loop, daemon=True)
     t.start()
 
-    # Start web server
     with socketserver.TCPServer(("", PORT), QuietHandler) as httpd:
         print(f"🌐 Serving on port {PORT}")
         httpd.serve_forever()

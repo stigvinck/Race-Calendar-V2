@@ -131,7 +131,7 @@
             font-weight: 400;
             color: var(--text-3);
         }
-        .filters { display: flex; gap: 6px; }
+        .filters { display: flex; gap: 6px; flex-wrap: wrap; }
         .fbtn {
             padding: 6px 15px;
             border: 1px solid var(--border);
@@ -146,6 +146,49 @@
         }
         .fbtn:hover { border-color: var(--border-hover); color: var(--text); }
         .fbtn.active { background: var(--text); border-color: var(--text); color: #fff; }
+
+        .type-filters {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 12px 24px 0;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .tbtn {
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            background: var(--surface);
+            color: var(--text-3);
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .tbtn:hover { border-color: var(--border-hover); color: var(--text-2); }
+        .tbtn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .tbtn .emoji { margin-right: 3px; }
+
+        .type-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+        }
+        .type-tag.run { background: #e8f4fd; color: #1a73e8; }
+        .type-tag.trail { background: #e8f5e9; color: #2e7d32; }
+        .type-tag.triathlon { background: #fff3e0; color: #e65100; }
+        .type-tag.cycling { background: #fce4ec; color: #c62828; }
+        .type-tag.swim { background: #e0f7fa; color: #00838f; }
+        .type-tag.obstacle { background: #f3e5f5; color: #7b1fa2; }
+        .type-tag.other { background: var(--tag-bg); color: var(--text-3); }
 
         /* ── Grid ── */
         .grid-wrap {
@@ -333,6 +376,16 @@
     </div>
 </div>
 
+<div class="type-filters" id="type-filters">
+    <button class="tbtn active" data-type="all">All types</button>
+    <button class="tbtn" data-type="run"><span class="emoji">🏃</span>Run</button>
+    <button class="tbtn" data-type="trail"><span class="emoji">⛰️</span>Trail</button>
+    <button class="tbtn" data-type="triathlon"><span class="emoji">🏊</span>Triathlon</button>
+    <button class="tbtn" data-type="cycling"><span class="emoji">🚴</span>Cycling</button>
+    <button class="tbtn" data-type="swim"><span class="emoji">💧</span>Swim</button>
+    <button class="tbtn" data-type="obstacle"><span class="emoji">🏋️</span>Obstacle</button>
+</div>
+
 <div class="grid-wrap" id="grid-wrap">
     <div class="loading-state"><div class="spinner"></div><span>Loading&hellip;</span></div>
 </div>
@@ -343,7 +396,8 @@
 <script>
 const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SH=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-let allRaces=[];
+const TL={run:"Run",trail:"Trail",triathlon:"Triathlon",cycling:"Cycling",swim:"Swim",obstacle:"Obstacle",other:"Other"};
+let allRaces=[],curFilter='all',curType='all';
 
 async function load(){
     try{
@@ -356,7 +410,7 @@ async function load(){
             document.getElementById('last-updated').innerHTML=
                 '<span class="live-dot"></span>Updated '+dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
         }
-        stats();render('all');
+        stats();render();
     }catch(e){
         document.getElementById('grid-wrap').innerHTML='<div class="no-results" style="display:block">Failed to load.</div>';
     }
@@ -374,14 +428,18 @@ function card(race){
     const d=new Date(race.date+'T00:00:00');
     const ds=SH[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
     const fb="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f3f2f0' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
+    const rt=race.type||'run';
+    const tb=`<span class="type-tag ${rt}">${TL[rt]||rt}</span>`;
+    const dist=(race.distances&&race.distances.length)?`<div style="font-size:11px;color:var(--text-3);font-family:'Space Mono',monospace;margin-bottom:6px">${race.distances.join(' · ')}</div>`:'';
     return `<a class="card" href="${race.url}" target="_blank" rel="noopener">
         <div class="card-img">
             <img src="${race.image}" alt="" loading="lazy" onerror="this.src='${fb}'"/>
             <span class="cbadge ${up?'upcoming':'past'}">${up?'Upcoming':'Past'}</span>
         </div>
         <div class="card-body">
-            <div class="card-date">${ds}</div>
+            <div class="card-date">${tb}${ds}</div>
             <div class="card-title">${race.name}</div>
+            ${dist}
             <div class="card-loc">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span>${race.location}</span>
@@ -393,13 +451,14 @@ function card(race){
     </a>`;
 }
 
-function render(filter){
+function render(){
     const w=document.getElementById('grid-wrap');
     const nr=document.getElementById('no-results');
     const t=new Date().toISOString().split('T')[0];
     let list=allRaces;
-    if(filter==='upcoming')list=allRaces.filter(r=>r.date>=t);
-    if(filter==='past')list=allRaces.filter(r=>r.date<t);
+    if(curFilter==='upcoming')list=list.filter(r=>r.date>=t);
+    if(curFilter==='past')list=list.filter(r=>r.date<t);
+    if(curType!=='all')list=list.filter(r=>(r.type||'run')===curType);
     if(!list.length){w.innerHTML='';nr.style.display='block';return;}
     nr.style.display='none';
     const g={};
@@ -419,7 +478,17 @@ document.querySelectorAll('.fbtn').forEach(b=>{
     b.addEventListener('click',()=>{
         document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));
         b.classList.add('active');
-        render(b.dataset.filter);
+        curFilter=b.dataset.filter;
+        render();
+    });
+});
+
+document.querySelectorAll('.tbtn').forEach(b=>{
+    b.addEventListener('click',()=>{
+        document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        curType=b.dataset.type;
+        render();
     });
 });
 
