@@ -243,7 +243,7 @@ def scrape():
     """Fetch all province pages (EN + TH) and merge races."""
     all_races = {}  # keyed by event_id
 
-    for province in ALL_PROVINCES:
+    for i, province in enumerate(ALL_PROVINCES):
         canonical = normalize_province(province)
 
         for lang in ["en", "th"]:
@@ -269,24 +269,24 @@ def scrape():
                         "price": None,
                     }
                 else:
-                    # Update with English name if we had Thai first
                     existing = all_races[eid]
                     if lang == "en" and r["name"]:
+                        # Prefer English name but keep Thai as fallback
                         existing["name"] = r["name"]
+                    elif lang == "th" and r["name"] and not existing.get("nameTh"):
+                        existing["nameTh"] = r["name"]
                     if not existing["image"] and r["image"]:
                         existing["image"] = r["image"]
 
             # Small delay to be polite
-            time.sleep(0.3)
+            time.sleep(0.15)
 
-        if all_races:
-            # Progress log every 10 provinces
-            idx = ALL_PROVINCES.index(province)
-            if (idx + 1) % 10 == 0:
-                print(f"    Runlah: {idx + 1}/{len(ALL_PROVINCES)} provinces, {len(all_races)} races so far")
+        # Progress log every 15 provinces
+        if (i + 1) % 15 == 0 or i == len(ALL_PROVINCES) - 1:
+            print(f"    Runlah: {i + 1}/{len(ALL_PROVINCES)} provinces, {len(all_races)} races so far")
 
     result = sorted(all_races.values(), key=lambda x: x["date"])
-    print(f"    Runlah: Done — {len(result)} races from {len(ALL_PROVINCES)} provinces")
+    print(f"    Runlah: Done — {len(result)} races from {len(ALL_PROVINCES)} provinces (EN + TH)")
     return result
 
 

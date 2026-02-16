@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.0 — 2026-02-16
+- Added Spartan Thailand scraper (th.spartan.com) — OCR obstacle races
+- Added RunningConnect scraper (runningconnect.com) — UTMB Thailand series, trail & ultra events
+- 11 active scrapers, 4 blocked sources tracked (WorldsMarathons, Ahotu, IRONMAN, MarathonGuide)
+- AI status badge now always visible: green "AI on" or red "AI off"
+- Version number included in zip filename for easier tracking
+- Improved scrape status bar with real-time source-by-source progress
+
 ## v0.4.0 — 2026-02-16
 - Added version numbering + changelog (visible on frontend and GitHub)
 - Live scrape status indicator — shows progress while scrapers run

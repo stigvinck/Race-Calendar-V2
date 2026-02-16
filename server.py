@@ -24,10 +24,12 @@ from scrapers.pho3nix import scrape as scrape_pho3nix
 from scrapers.cycloworld import scrape as scrape_cyclo
 from scrapers.xrace import scrape as scrape_xrace
 from scrapers.oceanman import scrape as scrape_ocean
+from scrapers.spartan import scrape as scrape_spartan
+from scrapers.runningconnect import scrape as scrape_rc
 from scrapers.ai_enrich import enrich_all, is_available as ai_available
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.4.0"
+VERSION = "0.5.2"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -41,6 +43,37 @@ PING_INTERVAL = 10 * 60
 
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
+    {
+        "version": "0.5.2",
+        "date": "2026-02-16",
+        "changes": [
+            "Restored full bilingual scraping (EN + TH) for Runlah — never skip Thai data",
+            "Reduced inter-request delay to 0.15s for faster scraping while staying polite",
+            "Thai race names preserved as nameTh field for AI enrichment",
+            "Status bar shows '77 provinces × EN+TH — takes ~2 min' for Runlah",
+        ]
+    },
+    {
+        "version": "0.5.1",
+        "date": "2026-02-16",
+        "changes": [
+            "Runlah scraper 2x faster: EN-only pass (was EN+TH), reduced delays",
+            "Scrape status bar shows context hints for slow scrapers (e.g. '77 provinces — takes ~1 min')",
+            "Timing shown per-scraper in logs",
+        ]
+    },
+    {
+        "version": "0.5.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Added Spartan Thailand scraper (th.spartan.com) — OCR obstacle races",
+            "Added RunningConnect scraper — UTMB Thailand series, trail & ultra events",
+            "11 active scrapers, 4 blocked sources tracked",
+            "AI status badge now shows ON (green) or OFF (red) — always visible",
+            "Version number in zip filename for easier tracking",
+            "Improved scrape status bar with real-time progress",
+        ]
+    },
     {
         "version": "0.4.0",
         "date": "2026-02-16",
@@ -137,9 +170,12 @@ SOURCE_REGISTRY = [
     {"name": "CycloWorld", "url": "cycloworld.cc", "desc": "Cycling race directory — gran fondo & road races in Thailand", "status": "active"},
     {"name": "XRace Asia", "url": "xraceasia.com", "desc": "Obstacle & adventure race series — Thailand events", "status": "active"},
     {"name": "Oceanman", "url": "oceanmanswim.com", "desc": "Open water swimming events — Krabi, Thailand", "status": "active"},
+    {"name": "Spartan Thailand", "url": "th.spartan.com", "desc": "Spartan OCR — Sprint, Super, Beast obstacle races in Thailand", "status": "active"},
+    {"name": "RunningConnect", "url": "runningconnect.com", "desc": "Trail & ultra events incl. UTMB Thailand series (Amazean Jungle, Chiang Mai)", "status": "active"},
     {"name": "WorldsMarathons", "url": "worldsmarathons.com", "desc": "Global marathon directory (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "Ahotu", "url": "ahotu.com", "desc": "Global endurance calendar (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "IRONMAN", "url": "ironman.com", "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)", "status": "blocked"},
+    {"name": "MarathonGuide", "url": "marathonguide.com", "desc": "International marathon directory (403 — access blocked)", "status": "blocked"},
 ]
 
 
@@ -180,6 +216,8 @@ def run_all_scrapers():
         ("CycloWorld", scrape_cyclo),
         ("XRace", scrape_xrace),
         ("Oceanman", scrape_ocean),
+        ("Spartan", scrape_spartan),
+        ("RunningConnect", scrape_rc),
     ]
 
     update_status(
@@ -197,9 +235,11 @@ def run_all_scrapers():
         update_status(currentSource=name, sourcesDone=i)
         log_status("Scraping " + name + "...")
         try:
+            t0 = time.time()
             races = scraper_fn()
-            print(f"  [{name}] Found {len(races)} races")
-            log_status(name + ": " + str(len(races)) + " races")
+            elapsed = round(time.time() - t0, 1)
+            print(f"  [{name}] Found {len(races)} races ({elapsed}s)")
+            log_status(name + ": " + str(len(races)) + " races (" + str(elapsed) + "s)")
             fresh_races.extend(races)
             update_status(racesFound=len(fresh_races))
         except Exception as e:

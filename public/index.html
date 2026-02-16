@@ -24,6 +24,8 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .hdr-stats .pill { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; background: var(--tag-bg); color: var(--text-2); }
 .hdr-stats .pill strong { color: var(--text); }
 .hdr-stats .pill.green { background: #dcfce7; color: #166534; }
+.hdr-stats .pill.ai-off { background: #fee2e2; color: #b91c1c; }
+.hdr-stats .pill.ai-on { background: #dcfce7; color: #166534; }
 #last-updated { font-size: 11px; color: var(--text-3); }
 .live-dot { display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -144,7 +146,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
     <div class="hdr-stats">
         <div class="pill"><strong id="total-count">0</strong> races</div>
         <div class="pill"><strong id="showing-count">0</strong> showing</div>
-        <div class="pill green" id="ai-badge" style="display:none">🤖 <strong>AI</strong></div>
+        <div class="pill green" id="ai-badge" style="display:none" title="AI enrichment status">🤖 <strong>AI</strong> <span id="ai-status">off</span></div>
         <div id="last-updated"></div>
         <button class="hdr-btn" id="sources-btn">📡 Sources</button>
         <button class="hdr-btn" id="changelog-btn">📋 v<span id="version-num">...</span></button>
@@ -257,7 +259,10 @@ function pollScrapeStatus() {
             } else {
                 var pct = s.sourcesTotal ? Math.round((s.sourcesDone / s.sourcesTotal) * 100) : 0;
                 var src = s.currentSource || '...';
-                prog.innerHTML = '<strong>Scraping: ' + src + '</strong> · ' + s.sourcesDone + '/' + s.sourcesTotal + ' sources · ' + s.racesFound + ' races found (' + pct + '%)';
+                var extra = '';
+                if (src === 'Runlah') extra = ' (77 provinces × EN+TH — takes ~2 min)';
+                if (src === 'RunningConnect') extra = ' (fetching event pages)';
+                prog.innerHTML = '<strong>Scraping: ' + src + '</strong>' + extra + ' · ' + s.sourcesDone + '/' + s.sourcesTotal + ' sources · ' + s.racesFound + ' races found (' + pct + '%)';
             }
             // Keep polling
             statusPollTimer = setTimeout(pollScrapeStatus, 2000);
@@ -296,16 +301,22 @@ async function load() {
                 dt.toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
         }
 
-        // AI badge — only show when AI is ON
+        // AI badge — always show with ON/OFF state
         var aiBadge = document.getElementById('ai-badge');
+        var aiStatusEl = document.getElementById('ai-status');
+        aiBadge.style.display = '';  // always show
         if (d.aiEnriched) {
             var stats = d.aiStats || {};
-            var tip = 'AI-enriched: ' + (stats.racesProcessed || '?') + ' processed';
+            var tip = 'AI enrichment ON: ' + (stats.racesProcessed || '?') + ' processed';
             if (stats.duplicatesRemoved) tip += ', ' + stats.duplicatesRemoved + ' dupes removed';
+            tip += ' (model: ' + (stats.model || 'Claude Sonnet') + ')';
             aiBadge.title = tip;
-            aiBadge.style.display = '';
+            aiBadge.className = 'pill ai-on';
+            aiStatusEl.textContent = 'on';
         } else {
-            aiBadge.style.display = 'none';
+            aiBadge.title = 'AI enrichment is OFF — set ANTHROPIC_API_KEY in Render to enable';
+            aiBadge.className = 'pill ai-off';
+            aiStatusEl.textContent = 'off';
         }
 
         updateStats();
