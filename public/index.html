@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CM Races — Chiang Mai Running Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafaf9;
+            --surface: #fff;
+            --border: #e8e5e1;
+            --border-hover: #d0ccc6;
+            --text: #1a1917;
+            --text-2: #6b6860;
+            --text-3: #9c978e;
+            --accent: #e04e1a;
+            --accent-light: #fff3ef;
+            --green: #22a352;
+            --green-light: #edfbf2;
+            --tag-bg: #f3f2f0;
+            --shadow-hover: 0 2px 8px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.06);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(250,250,249,0.82);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        .logo-icon {
+            width: 28px; height: 28px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-text {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -0.3px;
+        }
+        .logo-text span { color: var(--text-3); font-weight: 400; }
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-updated {
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: 'Space Mono', monospace;
+        }
+        .live-dot {
+            width: 7px; height: 7px;
+            background: var(--green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 2s infinite;
+            margin-right: 4px;
+        }
+        .header-link {
+            font-size: 13px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        .header-link:hover { opacity: 0.7; }
+
+        /* ── Stats + Filters bar ── */
+        .bar {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 20px 24px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .stats {
+            display: flex;
+            gap: 10px;
+        }
+        .stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 13px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Space Mono', monospace;
+        }
+        .stat-pill.total { background: var(--tag-bg); color: var(--text); }
+        .stat-pill.up { background: var(--green-light); color: var(--green); }
+        .stat-pill .sl {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 400;
+            color: var(--text-3);
+        }
+        .filters { display: flex; gap: 6px; }
+        .fbtn {
+            padding: 6px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text-2);
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .fbtn:hover { border-color: var(--border-hover); color: var(--text); }
+        .fbtn.active { background: var(--text); border-color: var(--text); color: #fff; }
+
+        /* ── Grid ── */
+        .grid-wrap {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 24px 24px 80px;
+        }
+        .month-group { margin-bottom: 36px; }
+        .month-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-3);
+            margin-bottom: 12px;
+            padding-left: 2px;
+        }
+        .race-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 14px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease;
+            opacity: 0;
+            transform: translateY(14px);
+        }
+        .card.visible { opacity: 1; transform: translateY(0); }
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+        .card-img {
+            position: relative;
+            aspect-ratio: 2/1;
+            overflow: hidden;
+            background: var(--tag-bg);
+        }
+        .card-img img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+        .card:hover .card-img img { transform: scale(1.04); }
+        .cbadge {
+            position: absolute;
+            top: 10px; right: 10px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cbadge.upcoming { background: var(--green); color: #fff; }
+        .cbadge.past { background: var(--text-3); color: #fff; }
+        .card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
+        .card-date {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            letter-spacing: -0.2px;
+        }
+        .card-loc {
+            font-size: 13px;
+            color: var(--text-2);
+            line-height: 1.45;
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            flex: 1;
+        }
+        .card-loc svg { flex-shrink: 0; margin-top: 2px; color: var(--text-3); }
+        .card-foot {
+            padding: 0 16px 14px;
+        }
+        .card-cta {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: gap 0.2s;
+        }
+        .card:hover .card-cta { gap: 8px; }
+
+        /* ── States ── */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 80px 20px;
+            gap: 12px;
+            color: var(--text-3);
+            font-size: 14px;
+        }
+        .spinner {
+            width: 24px; height: 24px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-3);
+            font-size: 14px;
+            display: none;
+        }
+        footer {
+            text-align: center;
+            padding: 28px 24px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-3);
+        }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        @media (max-width: 640px) {
+            .header-updated { display: none; }
+            .bar { padding: 14px 16px 0; }
+            .grid-wrap { padding: 16px 16px 60px; }
+            .race-grid { grid-template-columns: 1fr; }
+            .stats { order: 2; }
+            .filters { order: 1; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <a class="logo" href="#">
+            <div class="logo-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="logo-text">CM Races <span>/ Chiang Mai</span></div>
+        </a>
+        <div class="header-meta">
+            <span class="header-updated" id="last-updated"></span>
+            <a class="header-link" href="https://www.runlah.com/en/calendar/location?province=Chiang+Mai" target="_blank" rel="noopener">Runlah.com &#8599;</a>
+        </div>
+    </div>
+</header>
+
+<div class="bar">
+    <div class="stats">
+        <div class="stat-pill total"><span id="total-count">&mdash;</span> <span class="sl">races</span></div>
+        <div class="stat-pill up"><span class="live-dot"></span><span id="upcoming-count">&mdash;</span> <span class="sl">upcoming</span></div>
+    </div>
+    <div class="filters">
+        <button class="fbtn active" data-filter="all">All</button>
+        <button class="fbtn" data-filter="upcoming">Upcoming</button>
+        <button class="fbtn" data-filter="past">Past</button>
+    </div>
+</div>
+
+<div class="grid-wrap" id="grid-wrap">
+    <div class="loading-state"><div class="spinner"></div><span>Loading&hellip;</span></div>
+</div>
+<div class="no-results" id="no-results">No races found.</div>
+
+<footer>Data from <a href="https://www.runlah.com/en/calendar/location?province=Chiang+Mai" target="_blank">Runlah.com</a> &middot; Auto-updated daily via GitHub Actions</footer>
+
+<script>
+const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SH=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let allRaces=[];
+
+async function load(){
+    try{
+        const r=await fetch('./races.json');
+        if(!r.ok)throw 0;
+        const d=await r.json();
+        allRaces=d.races||[];
+        if(d.lastUpdated){
+            const dt=new Date(d.lastUpdated);
+            document.getElementById('last-updated').innerHTML=
+                '<span class="live-dot"></span>Updated '+dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        }
+        stats();render('all');
+    }catch(e){
+        document.getElementById('grid-wrap').innerHTML='<div class="no-results" style="display:block">Failed to load.</div>';
+    }
+}
+
+function stats(){
+    const t=new Date().toISOString().split('T')[0];
+    document.getElementById('total-count').textContent=allRaces.length;
+    document.getElementById('upcoming-count').textContent=allRaces.filter(r=>r.date>=t).length;
+}
+
+function card(race){
+    const t=new Date().toISOString().split('T')[0];
+    const up=race.date>=t;
+    const d=new Date(race.date+'T00:00:00');
+    const ds=SH[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+    const fb="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Crect fill='%23f3f2f0' width='640' height='320'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='16'%3ENo Image%3C/text%3E%3C/svg%3E";
+    return `<a class="card" href="${race.url}" target="_blank" rel="noopener">
+        <div class="card-img">
+            <img src="${race.image}" alt="" loading="lazy" onerror="this.src='${fb}'"/>
+            <span class="cbadge ${up?'upcoming':'past'}">${up?'Upcoming':'Past'}</span>
+        </div>
+        <div class="card-body">
+            <div class="card-date">${ds}</div>
+            <div class="card-title">${race.name}</div>
+            <div class="card-loc">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>${race.location}</span>
+            </div>
+        </div>
+        <div class="card-foot">
+            <span class="card-cta">View details <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></span>
+        </div>
+    </a>`;
+}
+
+function render(filter){
+    const w=document.getElementById('grid-wrap');
+    const nr=document.getElementById('no-results');
+    const t=new Date().toISOString().split('T')[0];
+    let list=allRaces;
+    if(filter==='upcoming')list=allRaces.filter(r=>r.date>=t);
+    if(filter==='past')list=allRaces.filter(r=>r.date<t);
+    if(!list.length){w.innerHTML='';nr.style.display='block';return;}
+    nr.style.display='none';
+    const g={};
+    list.forEach(r=>{const k=r.date.substring(0,7);(g[k]=g[k]||[]).push(r);});
+    let h='';
+    Object.keys(g).sort().forEach(k=>{
+        const[y,m]=k.split('-');
+        h+=`<div class="month-group"><div class="month-label">${MO[parseInt(m)-1]} ${y}</div><div class="race-grid">`;
+        g[k].forEach(r=>h+=card(r));
+        h+='</div></div>';
+    });
+    w.innerHTML=h;
+    w.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>c.classList.add('visible'),40*i));
+}
+
+document.querySelectorAll('.fbtn').forEach(b=>{
+    b.addEventListener('click',()=>{
+        document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        render(b.dataset.filter);
+    });
+});
+
+load();
+</script>
+</body>
+</html>
