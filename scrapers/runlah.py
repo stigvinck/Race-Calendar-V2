@@ -7,12 +7,22 @@ import urllib.request
 from html.parser import HTMLParser
 from datetime import datetime
 
-URL = "https://www.runlah.com/en/calendar/location?province=Chiang+Mai"
+URL_EN = "https://www.runlah.com/en/calendar/location?province=Chiang+Mai"
+URL_TH = "https://www.runlah.com/th/calendar/location?province=Chiang+Mai"
 BASE = "https://www.runlah.com"
+
+THAI_MONTHS = {
+    "มกราคม": "January", "กุมภาพันธ์": "February", "มีนาคม": "March",
+    "เมษายน": "April", "พฤษภาคม": "May", "มิถุนายน": "June",
+    "กรกฎาคม": "July", "สิงหาคม": "August", "กันยายน": "September",
+    "ตุลาคม": "October", "พฤศจิกายน": "November", "ธันวาคม": "December",
+}
 
 SKIP_HREFS = {
     "/en", "/en/calendar", "/en/results", "/en/promote", "/en/about",
     "/en/terms", "/en/privacy", "/en/user/registers", "/en/user/settings",
+    "/th", "/th/calendar", "/th/results", "/th/promote", "/th/about",
+    "/th/terms", "/th/privacy", "/th/user/registers", "/th/user/settings",
 }
 
 
@@ -27,11 +37,13 @@ class RunlahParser(HTMLParser):
         href = d.get("href", "")
         src = d.get("src", "")
 
-        if tag == "a" and href and re.match(r"^/en/[A-Za-z0-9_]+$", href):
+        if tag == "a" and href and re.match(r"^/(en|th)/[A-Za-z0-9_]+$", href):
             if "/teams/" not in href and href not in SKIP_HREFS:
                 if self.current is None:
+                    # Always link to English version
+                    event_id = href.split("/")[-1]
                     self.current = {
-                        "name": "", "url": BASE + href,
+                        "name": "", "url": BASE + "/en/" + event_id,
                         "image": "", "date": "", "dateDisplay": "", "location": "",
                         "source": "runlah",
                     }
@@ -80,6 +92,22 @@ class RunlahParser(HTMLParser):
                 except ValueError:
                     pass
 
+            # Thai date: "DD เดือนไทย YYYY(พ.ศ.)" — Buddhist year = CE + 543
+            for thai_month, eng_month in THAI_MONTHS.items():
+                pattern = rf"(\d{{1,2}})\s+{thai_month}\s+(\d{{4}})"
+                m3 = re.search(pattern, text)
+                if m3 and not r["date"]:
+                    day = int(m3.group(1))
+                    thai_year = int(m3.group(2))
+                    ce_year = thai_year - 543  # Convert Buddhist Era to CE
+                    try:
+                        dt = datetime(ce_year, list(THAI_MONTHS.values()).index(eng_month) + 1, day)
+                        r["date"] = dt.strftime("%Y-%m-%d")
+                        r["dateDisplay"] = f"{eng_month} {day}, {ce_year}"
+                    except ValueError:
+                        pass
+                    break
+
         # Location — match English "Chiang Mai" or Thai "เชียงใหม่"
         if not r["location"]:
             is_cm = ("Chiang Mai" in text and "province" in text.lower()) or \
@@ -97,9 +125,9 @@ class RunlahParser(HTMLParser):
             self.current = None
 
 
-def scrape():
-    """Fetch Runlah Chiang Mai page and return list of race dicts."""
-    req = urllib.request.Request(URL, headers={
+def fetch_and_parse(url):
+    """Fetch a single page and parse races from it."""
+    req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (compatible; CMRaces/1.0)"
     })
 
@@ -108,13 +136,29 @@ def scrape():
 
     parser = RunlahParser()
     parser.feed(html)
+    return parser.races
 
-    # Sort + deduplicate
+
+def scrape():
+    """Fetch both English and Thai Runlah pages and return merged race list."""
+    all_races = []
+
+    for url, label in [(URL_EN, "EN"), (URL_TH, "TH")]:
+        try:
+            races = fetch_and_parse(url)
+            print(f"    Runlah [{label}]: {len(races)} races")
+            all_races.extend(races)
+        except Exception as e:
+            print(f"    Runlah [{label}] error: {e}")
+
+    # Deduplicate by event ID (URL), preferring English version
     seen = set()
     unique = []
-    for r in sorted(parser.races, key=lambda x: x["date"]):
-        if r["url"] not in seen:
-            seen.add(r["url"])
+    for r in sorted(all_races, key=lambda x: x["date"]):
+        # Extract event ID from URL
+        event_id = r["url"].rstrip("/").split("/")[-1]
+        if event_id not in seen:
+            seen.add(event_id)
             unique.append(r)
 
     return unique
