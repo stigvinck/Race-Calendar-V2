@@ -299,10 +299,10 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
                 "aiEnriched": data.get("aiEnriched", False),
                 "aiStats": data.get("aiStats", {}),
                 "totalSources": data.get("totalSources", 0),
-                "apiKeySet": bool(API_KEY),
+                "apiKeySet": ai_available(),
             }
         except Exception:
-            status = {"error": "No data yet", "apiKeySet": bool(API_KEY)}
+            status = {"error": "No data yet", "apiKeySet": ai_available()}
 
         self.wfile.write(json.dumps(status, indent=2).encode("utf-8"))
 
