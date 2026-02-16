@@ -80,9 +80,12 @@ class RunlahParser(HTMLParser):
                 except ValueError:
                     pass
 
-        # Location
-        if not r["location"] and "Chiang Mai" in text and "province" in text.lower():
-            r["location"] = text.replace(" province", "").strip()
+        # Location — match English "Chiang Mai" or Thai "เชียงใหม่"
+        if not r["location"]:
+            is_cm = ("Chiang Mai" in text and "province" in text.lower()) or \
+                    ("เชียงใหม่" in text)
+            if is_cm:
+                r["location"] = text.replace(" province", "").replace("จังหวัด", "").strip()
 
     def handle_endtag(self, tag):
         if self.current and self.current["name"] and self.current["date"]:
