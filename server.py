@@ -33,7 +33,7 @@ from scrapers.checkrace import scrape as scrape_checkrace
 from scrapers.racethairun import scrape as scrape_racethairun
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -47,6 +47,17 @@ PING_INTERVAL = 10 * 60
 
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
+    {
+        "version": "0.8.1",
+        "date": "2026-02-16",
+        "changes": [
+            "Version number now shows immediately on page load (before scrape completes)",
+            "Card/Table view toggle — switch between visual cards and compact table",
+            "Table view: sortable columns, no images, compact layout for scanning",
+            "Laguna Phuket Tri: fixed fallback date (Nov 15, 2026 — 30th edition)",
+            "Headless browser status shown in scrape bar ('headless browser')",
+        ]
+    },
     {
         "version": "0.8.0",
         "date": "2026-02-16",
@@ -174,6 +185,7 @@ def update_status(**kwargs):
     """Thread-safe status update."""
     with scrape_lock:
         scrape_status.update(kwargs)
+        scrape_status["version"] = VERSION
         # Write to a small JSON file the frontend can poll
         try:
             with open(STATUS_PATH, "w") as f:

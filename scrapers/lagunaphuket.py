@@ -80,7 +80,10 @@ def scrape():
         print(f"    [LagunaPhkTri] Main page error: {e}")
 
     if not main_date:
-        main_date = "TBA"
+        # Known date: Sunday 15 November 2026 (30th edition)
+        main_date = "2026-11-15"
+        year = "2026"
+        edition = "30"
 
     edition_str = f" ({edition}th edition)" if edition else ""
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.1 — 2026-02-16
+- Version number now shows immediately on page load (reads from scrape-status.json)
+- **Card/Table view toggle** — switch between visual cards and compact table view
+- Table view: date, type, name, province, distances, source — no images, scannable
+- Laguna Phuket Tri: fixed date fallback to Nov 15, 2026 (30th edition)
+- Headless browser scraper status shown in progress bar
+
 ## v0.8.0 — 2026-02-16
 - **Headless browser (Playwright)** — unlocks JS-rendered sites that were previously blocked
 - Added **Checkrace** scraper (run.checkrace.com) — Thailand's #1 race registration platform, hundreds of Thai races

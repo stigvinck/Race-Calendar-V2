@@ -97,6 +97,22 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 
 /* ── Footer ──────────────── */
 .site-footer { max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; text-align: center; font-size: 11px; color: var(--text-3); }
+
+/* ── View Toggle ──────────── */
+.view-tog { padding: 4px 12px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-3); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+.view-tog:hover { border-color: var(--border-hover); color: var(--text-2); }
+.view-tog.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* ── Table View ───────────── */
+.race-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.race-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); border-bottom: 2px solid var(--border); position: sticky; top: 56px; background: var(--bg); z-index: 5; }
+.race-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.race-table tr:hover td { background: #f5f4f1; }
+.race-table a { color: var(--text); text-decoration: none; font-weight: 500; }
+.race-table a:hover { color: var(--accent); text-decoration: underline; }
+.race-table .tbl-date { white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-2); }
+.race-table .tbl-dist { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
+.race-table .tbl-source { font-size: 11px; color: var(--text-3); }
 .site-footer a { color: var(--accent); text-decoration: none; cursor: pointer; }
 .site-footer a:hover { text-decoration: underline; }
 
@@ -164,6 +180,10 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
         <span class="filter-label">Date</span>
         <button class="tog on" data-date-status="confirmed"><span class="emoji">✅</span>Confirmed</button>
         <button class="tog on" data-date-status="tbd"><span class="emoji">❓</span>TBD</button>
+        <span style="flex:1"></span>
+        <span class="filter-label" style="min-width:auto">View</span>
+        <button class="view-tog active" id="view-cards" title="Card view">🃏 Cards</button>
+        <button class="view-tog" id="view-table" title="Table view">📋 Table</button>
     </div>
     <div class="filter-row">
         <span class="filter-label">Type</span>
@@ -220,6 +240,7 @@ var activeTypes = new Set(["run","trail","triathlon","cycling","swim","obstacle"
 var activeLocs = new Set(["Chiang Mai","Bangkok","Other"]);
 var showConfirmed = true;
 var showTbd = true;
+var viewMode = 'cards';
 var SOURCES = [];
 var CHANGELOG = [];
 
@@ -242,6 +263,13 @@ function pollScrapeStatus() {
         return r.json();
     }).then(function(s) {
         if (!s) return;
+
+        // Show version immediately from status file
+        if (s.version) {
+            document.getElementById('version-num').textContent = s.version;
+            document.getElementById('footer-version').textContent = 'v' + s.version;
+        }
+
         var bar = document.getElementById('scrape-bar');
         var inner = document.getElementById('scrape-bar-inner');
         var prog = document.getElementById('scrape-progress');
@@ -259,6 +287,7 @@ function pollScrapeStatus() {
                 var extra = '';
                 if (src.indexOf('Runlah') === 0) extra = ' (EN+TH — takes ~2 min)';
                 if (src === 'RunningConnect') extra = ' (fetching event pages)';
+                if (src === 'Checkrace' || src === 'race.thai.run') extra = ' (headless browser)';
                 prog.innerHTML = '<strong>Scraping: ' + src + '</strong>' + extra + ' · ' + s.sourcesDone + '/' + s.sourcesTotal + ' sources · ' + s.racesFound + ' races found (' + pct + '%)';
             }
             // Keep polling
@@ -359,6 +388,24 @@ function card(race) {
     '</a>';
 }
 
+function tableRow(race) {
+    var tbd = isTbd(race);
+    var ds;
+    if (tbd) { ds = '<span style="color:#d97706;font-weight:600">TBA</span>'; }
+    else { var d = new Date(race.date + 'T00:00:00'); ds = SH[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+    var rt = race.type || 'other';
+    var dist = (race.distances && race.distances.length) ? race.distances.join(', ') : '';
+    var prov = race.province || '';
+    return '<tr>' +
+        '<td class="tbl-date">' + ds + '</td>' +
+        '<td><span class="type-tag ' + rt + '">' + (TL[rt] || rt) + '</span></td>' +
+        '<td><a href="' + race.url + '" target="_blank" rel="noopener">' + race.name + '</a></td>' +
+        '<td>' + prov + '</td>' +
+        '<td class="tbl-dist">' + dist + '</td>' +
+        '<td class="tbl-source">' + (race.source || '') + '</td>' +
+    '</tr>';
+}
+
 function render() {
     var gridEl = document.getElementById('grid-wrap');
     var noEl = document.getElementById('no-results');
@@ -371,6 +418,14 @@ function render() {
     var dated = [], tbdRaces = [];
     for (var i = 0; i < list.length; i++) { if (isTbd(list[i])) tbdRaces.push(list[i]); else dated.push(list[i]); }
 
+    if (viewMode === 'table') {
+        renderTable(gridEl, dated, tbdRaces);
+    } else {
+        renderCards(gridEl, dated, tbdRaces);
+    }
+}
+
+function renderCards(gridEl, dated, tbdRaces) {
     var groups = {};
     for (var i = 0; i < dated.length; i++) { var key = dated[i].date.substring(0, 7); if (!groups[key]) groups[key] = []; groups[key].push(dated[i]); }
 
@@ -392,6 +447,16 @@ function render() {
     for (var c = 0; c < cards.length; c++) {
         (function(el, delay) { setTimeout(function() { el.classList.add('visible'); }, delay); })(cards[c], Math.min(c * 30, 600));
     }
+}
+
+function renderTable(gridEl, dated, tbdRaces) {
+    var all = dated.concat(tbdRaces);
+    var html = '<table class="race-table"><thead><tr>' +
+        '<th>Date</th><th>Type</th><th>Race</th><th>Province</th><th>Distances</th><th>Source</th>' +
+    '</tr></thead><tbody>';
+    for (var i = 0; i < all.length; i++) html += tableRow(all[i]);
+    html += '</tbody></table>';
+    gridEl.innerHTML = html;
 }
 
 function renderSources() {
@@ -423,6 +488,20 @@ for (var i = 0; i < typeBtns.length; i++) { (function(btn) { btn.addEventListene
 
 var locBtns = document.querySelectorAll('.tog[data-loc]');
 for (var i = 0; i < locBtns.length; i++) { (function(btn) { btn.addEventListener('click', function(e) { e.preventDefault(); var l = btn.getAttribute('data-loc'); if (btn.classList.contains('on')) { btn.classList.remove('on'); activeLocs.delete(l); } else { btn.classList.add('on'); activeLocs.add(l); } render(); }); })(locBtns[i]); }
+
+// ── View toggle ──
+document.getElementById('view-cards').addEventListener('click', function() {
+    viewMode = 'cards';
+    this.classList.add('active');
+    document.getElementById('view-table').classList.remove('active');
+    render();
+});
+document.getElementById('view-table').addEventListener('click', function() {
+    viewMode = 'table';
+    this.classList.add('active');
+    document.getElementById('view-cards').classList.remove('active');
+    render();
+});
 
 // ── Modal handlers ──
 function openModal(id) { document.getElementById(id).classList.add('open'); }
