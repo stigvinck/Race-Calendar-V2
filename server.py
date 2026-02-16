@@ -20,6 +20,10 @@ from scrapers.gotorace import scrape as scrape_gotorace
 from scrapers.jogandjoy import scrape as scrape_jaj
 from scrapers.thairun import scrape as scrape_thairun
 from scrapers.finishers import scrape as scrape_finishers
+from scrapers.pho3nix import scrape as scrape_pho3nix
+from scrapers.cycloworld import scrape as scrape_cyclo
+from scrapers.xrace import scrape as scrape_xrace
+from scrapers.oceanman import scrape as scrape_ocean
 
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,6 +67,30 @@ SOURCE_REGISTRY = [
         "status": "active"
     },
     {
+        "name": "Pho3nix Kids",
+        "url": "pho3nixkidsthailand.com",
+        "desc": "Kids triathlon & duathlon series across Thailand",
+        "status": "active"
+    },
+    {
+        "name": "CycloWorld",
+        "url": "cycloworld.cc",
+        "desc": "Cycling race directory — gran fondo & road races in Thailand",
+        "status": "active"
+    },
+    {
+        "name": "XRace Asia",
+        "url": "xraceasia.com",
+        "desc": "Obstacle & adventure race series — Thailand events",
+        "status": "active"
+    },
+    {
+        "name": "Oceanman",
+        "url": "oceanmanswim.com",
+        "desc": "Open water swimming events — Krabi, Thailand",
+        "status": "active"
+    },
+    {
         "name": "WorldsMarathons",
         "url": "worldsmarathons.com",
         "desc": "Global marathon directory (JS-rendered — needs headless browser)",
@@ -77,32 +105,8 @@ SOURCE_REGISTRY = [
     {
         "name": "IRONMAN",
         "url": "ironman.com",
-        "desc": "IRONMAN & 70.3 Thailand/SEA events (manual tracking)",
-        "status": "planned"
-    },
-    {
-        "name": "CycloWorld",
-        "url": "cycloworld.cc",
-        "desc": "Cycling race directory — gran fondo & road races",
-        "status": "planned"
-    },
-    {
-        "name": "Pho3nix Kids",
-        "url": "pho3nixkidsthailand.com",
-        "desc": "Kids triathlon series across Thailand",
-        "status": "planned"
-    },
-    {
-        "name": "XRace Asia",
-        "url": "xraceasia.com",
-        "desc": "Obstacle & adventure race series in Asia",
-        "status": "planned"
-    },
-    {
-        "name": "Oceanman",
-        "url": "oceanmanswim.com",
-        "desc": "Open water swimming events — Krabi, Thailand",
-        "status": "planned"
+        "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)",
+        "status": "blocked"
     },
 ]
 
@@ -144,6 +148,10 @@ def run_all_scrapers():
         ("JogAndJoy", scrape_jaj),
         ("ThaiRun", scrape_thairun),
         ("Finishers", scrape_finishers),
+        ("Pho3nix", scrape_pho3nix),
+        ("CycloWorld", scrape_cyclo),
+        ("XRace", scrape_xrace),
+        ("Oceanman", scrape_ocean),
     ]
 
     for name, scraper_fn in scrapers:
