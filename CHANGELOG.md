@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.8.0 — 2026-02-16
+- **Headless browser (Playwright)** — unlocks JS-rendered sites that were previously blocked
+- Added **Checkrace** scraper (run.checkrace.com) — Thailand's #1 race registration platform, hundreds of Thai races
+- Added **race.thai.run** scraper — Thai.Run active event listings via headless browser
+- Added **Laguna Phuket Triathlon** scraper — triathlon, sprint, duathlon, fun run, open water swim
+- Dockerfile updated with Chromium + system deps for headless browsing
+- 16 active scrapers, 4 blocked sources
+- Headless browser auto-starts on first use, auto-cleans on shutdown
+
+## v0.7.0 — 2026-02-16
+- Added Muangthai Triathlon scraper — Eco Hero Super Series (Blue Guardian, Solar Future, Green Genesis)
+- Runlah now shows live province-by-province progress in status bar: "Runlah (23/77)"
+- Progress updates every 5 provinces instead of every 15 — no more "stuck" feeling
+- 13 active scrapers, 7 blocked sources
+
+## v0.6.0 — 2026-02-16
+- Added GranFondoGuide scraper (granfondoguide.com) — Dustman gravel, GFNY Krabi, Tour of Phuket, Chiang Mai Gran Fondo
+- 12 active scrapers, 7 blocked sources tracked
+- Removed AI enrichment module (simplifying stack)
+- Added Checkrace and race.thai.run to blocked sources list (JS-rendered SPAs)
+
 ## v0.5.0 — 2026-02-16
 - Added Spartan Thailand scraper (th.spartan.com) — OCR obstacle races
 - Added RunningConnect scraper (runningconnect.com) — UTMB Thailand series, trail & ultra events

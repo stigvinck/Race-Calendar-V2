@@ -239,7 +239,7 @@ def fetch_province(province, lang="en"):
         return []
 
 
-def scrape():
+def scrape(progress_cb=None):
     """Fetch all province pages (EN + TH) and merge races."""
     all_races = {}  # keyed by event_id
 
@@ -281,9 +281,11 @@ def scrape():
             # Small delay to be polite
             time.sleep(0.15)
 
-        # Progress log every 15 provinces
-        if (i + 1) % 15 == 0 or i == len(ALL_PROVINCES) - 1:
+        # Progress update every 5 provinces
+        if (i + 1) % 5 == 0 or i == len(ALL_PROVINCES) - 1:
             print(f"    Runlah: {i + 1}/{len(ALL_PROVINCES)} provinces, {len(all_races)} races so far")
+            if progress_cb:
+                progress_cb(i + 1, len(ALL_PROVINCES), len(all_races))
 
     result = sorted(all_races.values(), key=lambda x: x["date"])
     print(f"    Runlah: Done — {len(result)} races from {len(ALL_PROVINCES)} provinces (EN + TH)")

@@ -26,10 +26,14 @@ from scrapers.xrace import scrape as scrape_xrace
 from scrapers.oceanman import scrape as scrape_ocean
 from scrapers.spartan import scrape as scrape_spartan
 from scrapers.runningconnect import scrape as scrape_rc
-from scrapers.ai_enrich import enrich_all, is_available as ai_available
+from scrapers.granfondoguide import scrape as scrape_gfg
+from scrapers.muangthai import scrape as scrape_mtl
+from scrapers.lagunaphuket import scrape as scrape_lpt
+from scrapers.checkrace import scrape as scrape_checkrace
+from scrapers.racethairun import scrape as scrape_racethairun
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.5.2"
+VERSION = "0.8.0"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -43,6 +47,38 @@ PING_INTERVAL = 10 * 60
 
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
+    {
+        "version": "0.8.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Added Playwright headless browser — unlocks JS-rendered sites",
+            "Added Checkrace scraper (run.checkrace.com) — Thailand's #1 registration platform",
+            "Added race.thai.run scraper — Thai.Run active event listings",
+            "Added Laguna Phuket Triathlon scraper — tri, sprint, duathlon, fun run, OWS",
+            "16 active scrapers, 4 blocked sources",
+            "Dockerfile updated with Chromium for headless browsing",
+        ]
+    },
+    {
+        "version": "0.7.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Added Muangthai Triathlon scraper — Eco Hero Super Series (3 events/year)",
+            "Runlah now shows live province-by-province progress: 'Runlah (23/77)' in status bar",
+            "Progress updates every 5 provinces instead of every 15",
+            "13 active scrapers, 7 blocked sources",
+        ]
+    },
+    {
+        "version": "0.6.0",
+        "date": "2026-02-16",
+        "changes": [
+            "Added GranFondoGuide scraper — Dustman gravel, GFNY Krabi, Tour of Phuket, Chiang Mai Gran Fondo",
+            "12 active scrapers, 7 blocked sources tracked",
+            "Removed AI enrichment module (simplifying stack)",
+            "Added Checkrace and race.thai.run to blocked sources list (JS-rendered SPAs)",
+        ]
+    },
     {
         "version": "0.5.2",
         "date": "2026-02-16",
@@ -172,6 +208,11 @@ SOURCE_REGISTRY = [
     {"name": "Oceanman", "url": "oceanmanswim.com", "desc": "Open water swimming events — Krabi, Thailand", "status": "active"},
     {"name": "Spartan Thailand", "url": "th.spartan.com", "desc": "Spartan OCR — Sprint, Super, Beast obstacle races in Thailand", "status": "active"},
     {"name": "RunningConnect", "url": "runningconnect.com", "desc": "Trail & ultra events incl. UTMB Thailand series (Amazean Jungle, Chiang Mai)", "status": "active"},
+    {"name": "GranFondoGuide", "url": "granfondoguide.com", "desc": "Cycling events — Dustman gravel, GFNY Krabi, Tour of Phuket, gran fondos", "status": "active"},
+    {"name": "Muangthai Triathlon", "url": "gotorace.com/mtl*", "desc": "Muangthai Triathlon Eco Hero Super Series — 3 events/year across Thailand", "status": "active"},
+    {"name": "Laguna Phuket Tri", "url": "lagunaphukettri.com", "desc": "Laguna Phuket Triathlon weekend — triathlon, sprint, duathlon, fun run, OWS", "status": "active"},
+    {"name": "Checkrace", "url": "run.checkrace.com", "desc": "Thailand's #1 race registration platform — hundreds of Thai races (headless browser)", "status": "active"},
+    {"name": "race.thai.run", "url": "race.thai.run", "desc": "Thai.Run registration system — active event listings (headless browser)", "status": "active"},
     {"name": "WorldsMarathons", "url": "worldsmarathons.com", "desc": "Global marathon directory (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "Ahotu", "url": "ahotu.com", "desc": "Global endurance calendar (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "IRONMAN", "url": "ironman.com", "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)", "status": "blocked"},
@@ -218,6 +259,11 @@ def run_all_scrapers():
         ("Oceanman", scrape_ocean),
         ("Spartan", scrape_spartan),
         ("RunningConnect", scrape_rc),
+        ("GranFondoGuide", scrape_gfg),
+        ("Muangthai", scrape_mtl),
+        ("LagunaPhkTri", scrape_lpt),
+        ("Checkrace", scrape_checkrace),
+        ("race.thai.run", scrape_racethairun),
     ]
 
     update_status(
@@ -236,7 +282,14 @@ def run_all_scrapers():
         log_status("Scraping " + name + "...")
         try:
             t0 = time.time()
-            races = scraper_fn()
+            # Pass progress callback to scrapers that support it
+            if name == "Runlah":
+                def runlah_progress(prov_done, prov_total, race_count):
+                    log_status(f"Runlah: {prov_done}/{prov_total} provinces, {race_count} races")
+                    update_status(currentSource=f"Runlah ({prov_done}/{prov_total})")
+                races = scraper_fn(progress_cb=runlah_progress)
+            else:
+                races = scraper_fn()
             elapsed = round(time.time() - t0, 1)
             print(f"  [{name}] Found {len(races)} races ({elapsed}s)")
             log_status(name + ": " + str(len(races)) + " races (" + str(elapsed) + "s)")
@@ -245,33 +298,6 @@ def run_all_scrapers():
         except Exception as e:
             print(f"  [{name}] ERROR: {e}")
             log_status(name + ": ERROR - " + str(e)[:80])
-
-    update_status(currentSource="AI Enrichment", sourcesDone=len(scrapers))
-
-    # AI Enrichment
-    ai_used = False
-    ai_stats = {}
-    if ai_available():
-        log_status("Running AI enrichment...")
-        try:
-            before_count = len(fresh_races)
-            fresh_races = enrich_all(fresh_races)
-            after_count = len(fresh_races)
-            ai_used = True
-            ai_stats = {
-                "enabled": True,
-                "racesProcessed": before_count,
-                "duplicatesRemoved": before_count - after_count,
-                "model": "claude-sonnet-4-20250514",
-            }
-            log_status("AI: processed " + str(before_count) + ", removed " + str(before_count - after_count) + " dupes")
-        except Exception as e:
-            print(f"  [AI] Enrichment failed: {e}")
-            ai_stats = {"enabled": True, "error": str(e)}
-            log_status("AI: error - " + str(e)[:80])
-    else:
-        print("  [AI] Skipped — set ANTHROPIC_API_KEY to enable")
-        ai_stats = {"enabled": False}
 
     # Merge
     merged = {}
@@ -305,8 +331,6 @@ def run_all_scrapers():
         "version": VERSION,
         "lastUpdated": now,
         "totalSources": len(scrapers),
-        "aiEnriched": ai_used,
-        "aiStats": ai_stats,
         "sources": SOURCE_REGISTRY,
         "changelog": CHANGELOG,
         "races": races_list,
@@ -379,14 +403,11 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
                 "version": VERSION,
                 "totalRaces": len(data.get("races", [])),
                 "lastUpdated": data.get("lastUpdated", "never"),
-                "aiEnriched": data.get("aiEnriched", False),
-                "aiStats": data.get("aiStats", {}),
                 "totalSources": data.get("totalSources", 0),
-                "apiKeySet": ai_available(),
                 "scrape": scrape_status,
             }
         except Exception:
-            status = {"version": VERSION, "error": "No data yet", "apiKeySet": ai_available(), "scrape": scrape_status}
+            status = {"version": VERSION, "error": "No data yet", "scrape": scrape_status}
         self.wfile.write(json.dumps(status, indent=2).encode("utf-8"))
 
     def log_message(self, format, *args):
@@ -396,6 +417,10 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    import atexit
+    from scrapers.headless import cleanup as headless_cleanup
+    atexit.register(headless_cleanup)
+
     print(f"🏃 Thailand Race Finder v{VERSION}")
 
     # Write initial scrape status
