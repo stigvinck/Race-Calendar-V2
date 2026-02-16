@@ -1,5 +1,6 @@
 """
-Scraper: Runlah.com — Chiang Mai running races (EN + TH pages)
+Scraper: Runlah.com — All Thailand running races (EN + TH pages)
+Fetches the week-view calendar which lists all upcoming races nationwide.
 """
 
 import re
@@ -7,8 +8,11 @@ import urllib.request
 from html.parser import HTMLParser
 from datetime import datetime
 
-URL_EN = "https://www.runlah.com/en/calendar/location?province=Chiang+Mai"
-URL_TH = "https://www.runlah.com/th/calendar/location?province=Chiang+Mai"
+# Week view shows all upcoming races across Thailand
+URLS = [
+    ("EN", "https://www.runlah.com/en/calendar/week"),
+    ("TH", "https://www.runlah.com/th/calendar/week"),
+]
 BASE = "https://www.runlah.com"
 
 THAI_MONTHS = {
@@ -16,6 +20,22 @@ THAI_MONTHS = {
     "เมษายน": "April", "พฤษภาคม": "May", "มิถุนายน": "June",
     "กรกฎาคม": "July", "สิงหาคม": "August", "กันยายน": "September",
     "ตุลาคม": "October", "พฤศจิกายน": "November", "ธันวาคม": "December",
+}
+
+# Province name normalization (Thai → English)
+PROVINCE_MAP = {
+    "เชียงใหม่": "Chiang Mai", "กรุงเทพ": "Bangkok", "กรุงเทพมหานคร": "Bangkok",
+    "ภูเก็ต": "Phuket", "เชียงราย": "Chiang Rai", "ขอนแก่น": "Khon Kaen",
+    "นครราชสีมา": "Nakhon Ratchasima", "สงขลา": "Songkhla", "ชลบุรี": "Chonburi",
+    "สุราษฎร์ธานี": "Surat Thani", "กระบี่": "Krabi", "ลำปาง": "Lampang",
+    "น่าน": "Nan", "แพร่": "Phrae", "ตราด": "Trat", "เพชรบุรี": "Phetchaburi",
+    "ประจวบคีรีขันธ์": "Prachuap Khiri Khan", "ระยอง": "Rayong",
+    "พังงา": "Phang Nga", "นครปฐม": "Nakhon Pathom", "สุโขทัย": "Sukhothai",
+    "เพชรบูรณ์": "Phetchabun", "ลำพูน": "Lamphun", "แม่ฮ่องสอน": "Mae Hong Son",
+    "ตรัง": "Trang", "กาญจนบุรี": "Kanchanaburi", "พิษณุโลก": "Phitsanulok",
+    "อุดรธานี": "Udon Thani", "หนองคาย": "Nong Khai", "ยะลา": "Yala",
+    "สมุทรปราการ": "Samut Prakan", "นนทบุรี": "Nonthaburi",
+    "ปทุมธานี": "Pathum Thani", "ราชบุรี": "Ratchaburi",
 }
 
 SKIP_HREFS = {
@@ -35,30 +55,18 @@ TYPE_RULES = [
         "triathlon", "ไตรกีฬา", "duathlon", "aquathlon",
     ]),
     ("cycling", [
-        "cycling", "bicycle", "bike", "จักรยาน", "gravel",
+        "cycling", "bicycle", "bike", "จักรยาน", "gravel", "gran fondo",
     ]),
     ("swim", [
-        "swim", "ว่ายน้ำ", "open water",
+        "swim", "ว่ายน้ำ", "open water", "oceanman",
     ]),
     ("obstacle", [
-        "obstacle", "spartan", "mud",
+        "obstacle", "spartan", "mud", "xrace",
     ]),
 ]
 
-# ── Distance detection ─────────────────────────────
-DISTANCE_PATTERNS = [
-    r"(\d+)\s*(?:km|K)\b",
-    r"(?:fun\s*run|ฟันรัน)",
-    r"(?:mini|มินิ)\s*(?:marathon|มาราธอน)",
-    r"(?:half|ฮาล์ฟ)\s*(?:marathon|มาราธอน)",
-    r"(?:full\s*)?(?:marathon|มาราธอน)",
-    r"(?:ultra|อัลตร้า)",
-    r"(?:ekiden|เอกิเด็น)",
-]
-
-# ── Tag detection ──────────────────────────────────
 TAG_RULES = {
-    "night run": ["night", "กลางคืน", "dusk", "dawn"],
+    "night run": ["night", "กลางคืน", "midnight"],
     "charity": ["charity", "การกุศล", "เพื่อ"],
     "relay": ["relay", "ekiden", "เอกิเด็น"],
     "kids": ["kids", "เด็ก", "ลูก", "junior"],
@@ -68,7 +76,6 @@ TAG_RULES = {
 
 
 def detect_type(name):
-    """Detect race type from name keywords."""
     lower = name.lower()
     for race_type, keywords in TYPE_RULES:
         for kw in keywords:
@@ -78,15 +85,10 @@ def detect_type(name):
 
 
 def detect_distances(name):
-    """Extract distance labels from race name."""
     distances = []
     lower = name.lower()
-
-    # Numeric distances
     for m in re.finditer(r"(\d+)\s*(?:km|k)\b", lower):
         distances.append(f"{m.group(1)}K")
-
-    # Named distances
     if re.search(r"(?:full\s*)?marathon|ฟูลมาราธอน", lower) and "half" not in lower:
         if "42K" not in distances:
             distances.append("42K")
@@ -96,14 +98,10 @@ def detect_distances(name):
     if re.search(r"mini|มินิ", lower):
         if "10K" not in distances:
             distances.append("10K")
-    if re.search(r"ultra|อัลตร้า", lower):
-        distances.append("Ultra")
-
     return sorted(set(distances)) if distances else []
 
 
 def detect_tags(name):
-    """Detect tags from race name."""
     lower = name.lower()
     tags = []
     for tag, keywords in TAG_RULES.items():
@@ -112,6 +110,36 @@ def detect_tags(name):
                 tags.append(tag)
                 break
     return tags
+
+
+def normalize_province(location_text):
+    """Extract province name from location text."""
+    # Check for English province names
+    if "province" in location_text.lower():
+        m = re.search(r"(.+?)\s+province", location_text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip().replace(",", "").strip()
+
+    # Check Thai province names
+    for thai, eng in PROVINCE_MAP.items():
+        if thai in location_text:
+            return eng
+
+    # Check English province names directly
+    known_en = [
+        "Chiang Mai", "Bangkok", "Phuket", "Chiang Rai", "Khon Kaen",
+        "Nakhon Ratchasima", "Songkhla", "Chonburi", "Surat Thani",
+        "Krabi", "Nan", "Phrae", "Trat", "Prachuap Khiri Khan",
+        "Phetchabun", "Lampang", "Lamphun", "Mae Hong Son", "Rayong",
+        "Kanchanaburi", "Sukhothai", "Nakhon Pathom", "Phang Nga",
+        "Udon Thani", "Nong Khai", "Yala", "Samut Prakan", "Nonthaburi",
+        "Phitsanulok", "Trang", "Ratchaburi", "Pathum Thani",
+    ]
+    for prov in known_en:
+        if prov.lower() in location_text.lower():
+            return prov
+
+    return "Other"
 
 
 class RunlahParser(HTMLParser):
@@ -131,19 +159,13 @@ class RunlahParser(HTMLParser):
                     event_id = href.split("/")[-1]
                     self.current = {
                         "id": f"runlah:{event_id}",
-                        "name": "",
-                        "url": BASE + "/en/" + event_id,
-                        "image": "",
-                        "date": "",
-                        "dateDisplay": "",
-                        "location": "",
-                        "province": "Chiang Mai",
-                        "source": "runlah",
-                        "type": "run",
-                        "distances": [],
-                        "tags": [],
-                        "organizer": None,
-                        "price": None,
+                        "name": "", "url": BASE + "/en/" + event_id,
+                        "image": "", "date": "", "dateDisplay": "",
+                        "location": "", "province": "Other",
+                        "country": "Thailand",
+                        "source": "runlah", "type": "run",
+                        "distances": [], "tags": [],
+                        "organizer": None, "price": None,
                     }
 
         if tag == "img" and self.current and not self.current["image"]:
@@ -154,7 +176,6 @@ class RunlahParser(HTMLParser):
         text = data.strip()
         if not text or not self.current:
             return
-
         r = self.current
 
         # Name
@@ -166,8 +187,7 @@ class RunlahParser(HTMLParser):
         if not r["date"]:
             m = re.match(
                 r"^((?:January|February|March|April|May|June|July|August|"
-                r"September|October|November|December)\s+\d{1,2},\s+\d{4})$", text
-            )
+                r"September|October|November|December)\s+\d{1,2},\s+\d{4})$", text)
             if m:
                 r["dateDisplay"] = m.group(1)
                 try:
@@ -175,18 +195,15 @@ class RunlahParser(HTMLParser):
                 except ValueError:
                     pass
 
-            # "DD-DD Month YYYY" or "DD Month YYYY"
             m2 = re.match(
                 r"^(\d{1,2})(?:-\d{1,2})?\s+"
                 r"((?:January|February|March|April|May|June|July|August|"
-                r"September|October|November|December)\s+\d{4})$", text
-            )
+                r"September|October|November|December)\s+\d{4})$", text)
             if m2 and not r["date"]:
                 r["dateDisplay"] = text
                 try:
                     r["date"] = datetime.strptime(
-                        f"{m2.group(1)} {m2.group(2)}", "%d %B %Y"
-                    ).strftime("%Y-%m-%d")
+                        f"{m2.group(1)} {m2.group(2)}", "%d %B %Y").strftime("%Y-%m-%d")
                 except ValueError:
                     pass
 
@@ -205,21 +222,28 @@ class RunlahParser(HTMLParser):
                         pass
                     break
 
-        # Location
-        if not r["location"]:
-            is_cm = ("Chiang Mai" in text and "province" in text.lower()) or \
-                    ("เชียงใหม่" in text)
-            if is_cm:
-                r["location"] = text.replace(" province", "").replace("จังหวัด", "").strip()
+        # Location — capture any location text with province info
+        if not r["location"] or r["province"] == "Other":
+            # Check if text contains province-like info
+            has_province = ("province" in text.lower() or
+                           "จังหวัด" in text or "จ." in text or
+                           any(thai in text for thai in PROVINCE_MAP))
+            has_english_prov = any(p in text for p in [
+                "Chiang Mai", "Bangkok", "Phuket", "Chiang Rai",
+                "Khon Kaen", "Chonburi", "Songkhla", "Krabi",
+            ])
+            if has_province or has_english_prov:
+                r["location"] = (text.replace(" province", "")
+                                 .replace("จังหวัด", "").replace("จ.", "").strip())
+                r["province"] = normalize_province(text)
 
     def handle_endtag(self, tag):
         if self.current and self.current["name"] and self.current["date"]:
-            urls = {r["url"] for r in self.races}
-            if self.current["url"] not in urls:
+            ids = {r["id"] for r in self.races}
+            if self.current["id"] not in ids:
                 r = self.current
                 if not r["location"]:
-                    r["location"] = "Chiang Mai"
-                # Detect type, distances, tags from name
+                    r["location"] = "Thailand"
                 r["type"] = detect_type(r["name"])
                 r["distances"] = detect_distances(r["name"])
                 r["tags"] = detect_tags(r["name"])
@@ -239,15 +263,27 @@ def fetch_and_parse(url):
 
 
 def scrape():
-    """Fetch EN + TH pages, merge, return race list."""
+    """Fetch EN + TH week views, merge, return all Thailand races."""
     all_races = []
-    for url, label in [(URL_EN, "EN"), (URL_TH, "TH")]:
+    for label, url in URLS:
         try:
             races = fetch_and_parse(url)
             print(f"    Runlah [{label}]: {len(races)} races")
             all_races.extend(races)
         except Exception as e:
             print(f"    Runlah [{label}] error: {e}")
+
+    # Also fetch province-specific pages for Chiang Mai and Bangkok
+    # (week view may not show all future races)
+    for prov in ["Chiang+Mai", "Bangkok"]:
+        for lang in ["en", "th"]:
+            url = f"{BASE}/{lang}/calendar/location?province={prov}"
+            try:
+                races = fetch_and_parse(url)
+                print(f"    Runlah [{lang}/{prov}]: {len(races)} races")
+                all_races.extend(races)
+            except Exception as e:
+                print(f"    Runlah [{lang}/{prov}] error: {e}")
 
     seen = set()
     unique = []
@@ -260,6 +296,6 @@ def scrape():
 
 if __name__ == "__main__":
     races = scrape()
-    print(f"Found {len(races)} Chiang Mai races on Runlah:")
+    print(f"\nFound {len(races)} races on Runlah:")
     for r in races:
-        print(f"  {r['date']} [{r['type']}] {r['name']} {r['distances']}")
+        print(f"  {r['date']} [{r['type']:8s}] [{r['province']:15s}] {r['name'][:50]}")

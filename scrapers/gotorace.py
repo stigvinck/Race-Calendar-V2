@@ -20,6 +20,27 @@ PAGES = [
 
 CM_KEYWORDS = ["chiang mai", "เชียงใหม่", "chiangmai"]
 
+PROVINCE_KEYWORDS = {
+    "chiang mai": "Chiang Mai", "chiangmai": "Chiang Mai", "chiang dao": "Chiang Mai",
+    "bangkok": "Bangkok", "phuket": "Phuket", "chiang rai": "Chiang Rai",
+    "khon kaen": "Khon Kaen", "nakhon ratchasima": "Nakhon Ratchasima",
+    "korat": "Nakhon Ratchasima", "songkhla": "Songkhla", "chonburi": "Chonburi",
+    "pattaya": "Chonburi", "surat thani": "Surat Thani", "samui": "Surat Thani",
+    "krabi": "Krabi", "nan": "Nan", "trat": "Trat",
+    "hua hin": "Prachuap Khiri Khan", "prachuap": "Prachuap Khiri Khan",
+    "sam roi yod": "Prachuap Khiri Khan", "samroiyod": "Prachuap Khiri Khan",
+    "phetchabun": "Phetchabun", "lampang": "Lampang", "sukhothai": "Sukhothai",
+    "kanchanaburi": "Kanchanaburi", "rayong": "Rayong", "phang nga": "Phang Nga",
+    "mae hong son": "Mae Hong Son", "yala": "Yala", "betong": "Yala",
+}
+
+def detect_province(text):
+    lower = text.lower()
+    for kw, prov in PROVINCE_KEYWORDS.items():
+        if kw in lower:
+            return prov
+    return "Other"
+
 MONTHS = {
     "january": 1, "february": 2, "march": 3, "april": 4,
     "may": 5, "june": 6, "july": 7, "august": 8,
@@ -190,14 +211,13 @@ def scrape():
         except Exception as e:
             print(f"    GoToRace page error ({url}): {e}")
 
-    # Filter for Chiang Mai
-    cm_races = [r for r in all_races if is_chiang_mai(r)]
-
-    # Build full schema
+    # Build full schema — all Thailand races (no CM filter)
     result = []
-    for r in cm_races:
+    for r in all_races:
         race_type = TYPE_MAP.get(r.get("type_raw", ""), "run")
         slug = re.sub(r"[^a-z0-9]+", "-", r["name"].lower())[:40].strip("-")
+        loc = r.get("location", "")
+        province = detect_province(f"{r['name']} {loc}")
         result.append({
             "id": f"gotorace:{slug}",
             "name": r["name"],
@@ -205,8 +225,9 @@ def scrape():
             "image": r["image"],
             "date": r["date"],
             "dateDisplay": r["dateDisplay"],
-            "location": r.get("location", "Chiang Mai"),
-            "province": "Chiang Mai",
+            "location": loc or "Thailand",
+            "province": province,
+            "country": "Thailand",
             "source": "gotorace",
             "type": race_type,
             "distances": [],

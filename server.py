@@ -14,6 +14,8 @@ from datetime import datetime
 
 from scrapers.runlah import scrape as scrape_runlah
 from scrapers.gotorace import scrape as scrape_gotorace
+from scrapers.worldsmarathons import scrape as scrape_wm
+from scrapers.ahotu import scrape as scrape_ahotu
 
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -41,8 +43,8 @@ def run_all_scrapers():
     scrapers = [
         ("Runlah", scrape_runlah),
         ("GoToRace", scrape_gotorace),
-        # ("Ahotu", scrape_ahotu),
-        # ("Finishers", scrape_finishers),
+        ("WorldsMarathons", scrape_wm),
+        ("Ahotu", scrape_ahotu),
     ]
 
     for name, scraper_fn in scrapers:
