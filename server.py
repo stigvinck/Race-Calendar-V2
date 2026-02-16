@@ -33,7 +33,7 @@ from scrapers.checkrace import scrape as scrape_checkrace
 from scrapers.racethairun import scrape as scrape_racethairun
 
 # ── Version ──────────────────────────────────────
-VERSION = "0.8.1"
+VERSION = "0.8.3"
 
 # ── Config ───────────────────────────────────────
 PORT = int(os.environ.get("PORT", 10000))
@@ -47,6 +47,28 @@ PING_INTERVAL = 10 * 60
 
 # ── Changelog ────────────────────────────────────
 CHANGELOG = [
+    {
+        "version": "0.8.3",
+        "date": "2026-02-17",
+        "changes": [
+            "Rebuilt Checkrace scraper — now discovers events via Google search index instead of hardcoded list",
+            "Rebuilt race.thai.run scraper — same Google index approach",
+            "Both scrapers parse Thai dates, provinces, distances from Google snippets",
+            "Self-updating: Google re-indexes the sites automatically, no manual maintenance needed",
+            "No headless browser, no Chromium, no extra memory usage",
+        ]
+    },
+    {
+        "version": "0.8.2",
+        "date": "2026-02-17",
+        "changes": [
+            "Fixed Checkrace scraper — replaced broken headless browser with curated known-events approach",
+            "Fixed race.thai.run scraper — same approach (most events already covered by Thai.Run scraper)",
+            "Removed Playwright/Chromium dependency — Dockerfile back to slim (50MB vs 250MB)",
+            "Checkrace now shows: Scenic HM Pranburi, B-QUIK Khao Yai Marathon, POCARI SWEAT RUN, aminoVITAL RUN",
+            "Render free tier no longer risks memory issues from Chromium",
+        ]
+    },
     {
         "version": "0.8.1",
         "date": "2026-02-16",
@@ -223,8 +245,8 @@ SOURCE_REGISTRY = [
     {"name": "GranFondoGuide", "url": "granfondoguide.com", "desc": "Cycling events — Dustman gravel, GFNY Krabi, Tour of Phuket, gran fondos", "status": "active"},
     {"name": "Muangthai Triathlon", "url": "gotorace.com/mtl*", "desc": "Muangthai Triathlon Eco Hero Super Series — 3 events/year across Thailand", "status": "active"},
     {"name": "Laguna Phuket Tri", "url": "lagunaphukettri.com", "desc": "Laguna Phuket Triathlon weekend — triathlon, sprint, duathlon, fun run, OWS", "status": "active"},
-    {"name": "Checkrace", "url": "run.checkrace.com", "desc": "Thailand's #1 race registration platform — hundreds of Thai races (headless browser)", "status": "active"},
-    {"name": "race.thai.run", "url": "race.thai.run", "desc": "Thai.Run registration system — active event listings (headless browser)", "status": "active"},
+    {"name": "Checkrace", "url": "run.checkrace.com", "desc": "Thailand's #1 registration platform — events discovered via Google search index (site is JS-rendered)", "status": "active"},
+    {"name": "race.thai.run", "url": "race.thai.run", "desc": "Thai.Run registration system — events via Google search index (site is JS-rendered)", "status": "active"},
     {"name": "WorldsMarathons", "url": "worldsmarathons.com", "desc": "Global marathon directory (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "Ahotu", "url": "ahotu.com", "desc": "Global endurance calendar (JS-rendered — needs headless browser)", "status": "blocked"},
     {"name": "IRONMAN", "url": "ironman.com", "desc": "IRONMAN & 70.3 Thailand/SEA events (JS-rendered SPA)", "status": "blocked"},
@@ -429,10 +451,6 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    import atexit
-    from scrapers.headless import cleanup as headless_cleanup
-    atexit.register(headless_cleanup)
-
     print(f"🏃 Thailand Race Finder v{VERSION}")
 
     # Write initial scrape status

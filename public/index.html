@@ -287,7 +287,6 @@ function pollScrapeStatus() {
                 var extra = '';
                 if (src.indexOf('Runlah') === 0) extra = ' (EN+TH — takes ~2 min)';
                 if (src === 'RunningConnect') extra = ' (fetching event pages)';
-                if (src === 'Checkrace' || src === 'race.thai.run') extra = ' (headless browser)';
                 prog.innerHTML = '<strong>Scraping: ' + src + '</strong>' + extra + ' · ' + s.sourcesDone + '/' + s.sourcesTotal + ' sources · ' + s.racesFound + ' races found (' + pct + '%)';
             }
             // Keep polling

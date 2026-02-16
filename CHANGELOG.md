@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.8.3 — 2026-02-17
+- **Rebuilt Checkrace scraper** — uses Google search index instead of hardcoded list
+  - Searches `site:run.checkrace.com/event` and parses titles/snippets
+  - Parses Thai dates (Buddhist year), provinces, distances from snippets  
+  - Self-updating: Google re-indexes automatically, no manual maintenance
+- **Rebuilt race.thai.run scraper** — same Google index approach
+- No headless browser, no Chromium dependency, lightweight
+
+## v0.8.2 — 2026-02-17
+- **Fixed Checkrace** — headless browser didn't work on Render free tier (512MB RAM)
+  - Replaced with curated known-events approach: Scenic HM Pranburi, B-QUIK Khao Yai, POCARI SWEAT, aminoVITAL
+  - Still pulls og:image from meta tags when available
+- **Fixed race.thai.run** — same approach (most events already covered by Thai.Run HTTP scraper)
+- **Removed Playwright/Chromium** — Dockerfile back to slim image, no more memory risk
+- Checkrace and race.thai.run sites are fully JS-rendered SPAs with no public API
+
 ## v0.8.1 — 2026-02-16
 - Version number now shows immediately on page load (reads from scrape-status.json)
 - **Card/Table view toggle** — switch between visual cards and compact table view
