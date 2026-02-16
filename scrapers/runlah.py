@@ -1,41 +1,45 @@
 """
-Scraper: Runlah.com — All Thailand running races (EN + TH pages)
-Fetches the week-view calendar which lists all upcoming races nationwide.
+Scraper: Runlah.com — All Thailand running races via province pages (EN + TH)
+The week/calendar views are JS-rendered ("Loading...") so we must use
+the province-specific location pages which server-render race cards.
 """
 
 import re
 import urllib.request
+import time
 from html.parser import HTMLParser
 from datetime import datetime
 
-# Week view shows all upcoming races across Thailand
-URLS = [
-    ("EN", "https://www.runlah.com/en/calendar/week"),
-    ("TH", "https://www.runlah.com/th/calendar/week"),
-]
 BASE = "https://www.runlah.com"
+
+# Complete list of all 77 Thai provinces as they appear in Runlah URLs
+ALL_PROVINCES = [
+    "Bangkok", "Chiang Mai", "Chiang Rai", "Chon Buri", "Nakhon Ratchasima",
+    "Khon Kaen", "Phuket", "Songkhla", "Surat Thani", "Krabi",
+    "Lampang", "Lamphun", "Nan", "Phrae", "Phayao",
+    "Mae Hong Son", "Phitsanulok", "Sukhothai", "Uttaradit",
+    "Kanchanaburi", "Kamphaeng Phet", "Phichit", "Phetchabun",
+    "Suphan Buri", "Tak", "Uthai Thani",
+    "Ang Thong", "Chai Nat", "Lop Buri", "Nakhon Nayok",
+    "Prachin Buri", "Nakhon Sawan",
+    "Phra Nakhon Si Ayutthaya", "Pathum Thani", "Sing Buri", "Saraburi",
+    "Nonthaburi", "Nakhon Pathom", "Phetchaburi", "Prachuap Khiri Khan",
+    "Ratchaburi", "Samut Prakarn", "Samut Sakhon", "Samut Songkhram",
+    "Si Sa Ket", "Ubon Ratchathani", "Amnat Charoen", "Yasothon",
+    "Chachoengsao", "Chanthaburi", "Sa Kaeo", "Rayong", "Trat",
+    "Buri Ram", "Chaiyaphum", "Kalasin", "Maha Sarakham",
+    "Roi Et", "Surin", "Loei", "Nong Khai",
+    "Sakon Nakhon", "Udon Thani", "Nong Bua Lam Phu", "Nakhon Phanom",
+    "Mukdahan", "Narathiwat", "Pattani", "Yala", "Bueng Kan",
+    "Chumphon", "Nakhon Si Thammarat", "Phang-nga", "Phatthalung",
+    "Ranong", "Satun", "Trang",
+]
 
 THAI_MONTHS = {
     "มกราคม": "January", "กุมภาพันธ์": "February", "มีนาคม": "March",
     "เมษายน": "April", "พฤษภาคม": "May", "มิถุนายน": "June",
     "กรกฎาคม": "July", "สิงหาคม": "August", "กันยายน": "September",
     "ตุลาคม": "October", "พฤศจิกายน": "November", "ธันวาคม": "December",
-}
-
-# Province name normalization (Thai → English)
-PROVINCE_MAP = {
-    "เชียงใหม่": "Chiang Mai", "กรุงเทพ": "Bangkok", "กรุงเทพมหานคร": "Bangkok",
-    "ภูเก็ต": "Phuket", "เชียงราย": "Chiang Rai", "ขอนแก่น": "Khon Kaen",
-    "นครราชสีมา": "Nakhon Ratchasima", "สงขลา": "Songkhla", "ชลบุรี": "Chonburi",
-    "สุราษฎร์ธานี": "Surat Thani", "กระบี่": "Krabi", "ลำปาง": "Lampang",
-    "น่าน": "Nan", "แพร่": "Phrae", "ตราด": "Trat", "เพชรบุรี": "Phetchaburi",
-    "ประจวบคีรีขันธ์": "Prachuap Khiri Khan", "ระยอง": "Rayong",
-    "พังงา": "Phang Nga", "นครปฐม": "Nakhon Pathom", "สุโขทัย": "Sukhothai",
-    "เพชรบูรณ์": "Phetchabun", "ลำพูน": "Lamphun", "แม่ฮ่องสอน": "Mae Hong Son",
-    "ตรัง": "Trang", "กาญจนบุรี": "Kanchanaburi", "พิษณุโลก": "Phitsanulok",
-    "อุดรธานี": "Udon Thani", "หนองคาย": "Nong Khai", "ยะลา": "Yala",
-    "สมุทรปราการ": "Samut Prakan", "นนทบุรี": "Nonthaburi",
-    "ปทุมธานี": "Pathum Thani", "ราชบุรี": "Ratchaburi",
 }
 
 SKIP_HREFS = {
@@ -112,34 +116,15 @@ def detect_tags(name):
     return tags
 
 
-def normalize_province(location_text):
-    """Extract province name from location text."""
-    # Check for English province names
-    if "province" in location_text.lower():
-        m = re.search(r"(.+?)\s+province", location_text, re.IGNORECASE)
-        if m:
-            return m.group(1).strip().replace(",", "").strip()
-
-    # Check Thai province names
-    for thai, eng in PROVINCE_MAP.items():
-        if thai in location_text:
-            return eng
-
-    # Check English province names directly
-    known_en = [
-        "Chiang Mai", "Bangkok", "Phuket", "Chiang Rai", "Khon Kaen",
-        "Nakhon Ratchasima", "Songkhla", "Chonburi", "Surat Thani",
-        "Krabi", "Nan", "Phrae", "Trat", "Prachuap Khiri Khan",
-        "Phetchabun", "Lampang", "Lamphun", "Mae Hong Son", "Rayong",
-        "Kanchanaburi", "Sukhothai", "Nakhon Pathom", "Phang Nga",
-        "Udon Thani", "Nong Khai", "Yala", "Samut Prakan", "Nonthaburi",
-        "Phitsanulok", "Trang", "Ratchaburi", "Pathum Thani",
-    ]
-    for prov in known_en:
-        if prov.lower() in location_text.lower():
-            return prov
-
-    return "Other"
+# Normalize province names from Runlah's URL format
+def normalize_province(url_province):
+    """Map Runlah URL province name to our canonical name."""
+    mapping = {
+        "Phang-nga": "Phang Nga",
+        "Samut Prakarn": "Samut Prakan",
+        "Chon Buri": "Chonburi",
+    }
+    return mapping.get(url_province, url_province)
 
 
 class RunlahParser(HTMLParser):
@@ -158,14 +143,10 @@ class RunlahParser(HTMLParser):
                 if self.current is None:
                     event_id = href.split("/")[-1]
                     self.current = {
-                        "id": f"runlah:{event_id}",
+                        "event_id": event_id,
                         "name": "", "url": BASE + "/en/" + event_id,
                         "image": "", "date": "", "dateDisplay": "",
-                        "location": "", "province": "Other",
-                        "country": "Thailand",
-                        "source": "runlah", "type": "run",
-                        "distances": [], "tags": [],
-                        "organizer": None, "price": None,
+                        "location": "",
                     }
 
         if tag == "img" and self.current and not self.current["image"]:
@@ -180,10 +161,12 @@ class RunlahParser(HTMLParser):
 
         # Name
         if not r["name"] and len(text) > 3:
-            if text not in ("Detail", "Register now!", "View all other events..."):
+            skip = {"Detail", "Register now!", "View all other events...",
+                    "Please click on a province", "Loading..."}
+            if text not in skip and not text.startswith("Bangkok and"):
                 r["name"] = text
 
-        # Date — "Month DD, YYYY"
+        # Date — English formats
         if not r["date"]:
             m = re.match(
                 r"^((?:January|February|March|April|May|June|July|August|"
@@ -215,87 +198,100 @@ class RunlahParser(HTMLParser):
                     day = int(m3.group(1))
                     ce_year = int(m3.group(2)) - 543
                     try:
-                        dt = datetime(ce_year, list(THAI_MONTHS.values()).index(eng_month) + 1, day)
+                        month_idx = list(THAI_MONTHS.values()).index(eng_month) + 1
+                        dt = datetime(ce_year, month_idx, day)
                         r["date"] = dt.strftime("%Y-%m-%d")
                         r["dateDisplay"] = f"{eng_month} {day}, {ce_year}"
                     except ValueError:
                         pass
                     break
 
-        # Location — capture any location text with province info
-        if not r["location"] or r["province"] == "Other":
-            # Check if text contains province-like info
+        # Location text
+        if not r["location"]:
             has_province = ("province" in text.lower() or
-                           "จังหวัด" in text or "จ." in text or
-                           any(thai in text for thai in PROVINCE_MAP))
-            has_english_prov = any(p in text for p in [
-                "Chiang Mai", "Bangkok", "Phuket", "Chiang Rai",
-                "Khon Kaen", "Chonburi", "Songkhla", "Krabi",
-            ])
-            if has_province or has_english_prov:
+                           "จังหวัด" in text or "จ." in text)
+            if has_province:
                 r["location"] = (text.replace(" province", "")
                                  .replace("จังหวัด", "").replace("จ.", "").strip())
-                r["province"] = normalize_province(text)
 
     def handle_endtag(self, tag):
         if self.current and self.current["name"] and self.current["date"]:
-            ids = {r["id"] for r in self.races}
-            if self.current["id"] not in ids:
-                r = self.current
-                if not r["location"]:
-                    r["location"] = "Thailand"
-                r["type"] = detect_type(r["name"])
-                r["distances"] = detect_distances(r["name"])
-                r["tags"] = detect_tags(r["name"])
-                self.races.append(r)
+            ids = {r["event_id"] for r in self.races}
+            if self.current["event_id"] not in ids:
+                self.races.append(self.current)
             self.current = None
 
 
-def fetch_and_parse(url):
+def fetch_province(province, lang="en"):
+    """Fetch a single province page and return parsed races."""
+    url_prov = province.replace(" ", "+")
+    url = f"{BASE}/{lang}/calendar/location?province={url_prov}"
     req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (compatible; CMRaces/1.0)"
     })
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        html = resp.read().decode("utf-8")
-    parser = RunlahParser()
-    parser.feed(html)
-    return parser.races
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            html = resp.read().decode("utf-8")
+        parser = RunlahParser()
+        parser.feed(html)
+        return parser.races
+    except Exception as e:
+        return []
 
 
 def scrape():
-    """Fetch EN + TH week views, merge, return all Thailand races."""
-    all_races = []
-    for label, url in URLS:
-        try:
-            races = fetch_and_parse(url)
-            print(f"    Runlah [{label}]: {len(races)} races")
-            all_races.extend(races)
-        except Exception as e:
-            print(f"    Runlah [{label}] error: {e}")
+    """Fetch all province pages (EN + TH) and merge races."""
+    all_races = {}  # keyed by event_id
 
-    # Also fetch province-specific pages for Chiang Mai and Bangkok
-    # (week view may not show all future races)
-    for prov in ["Chiang+Mai", "Bangkok"]:
+    for province in ALL_PROVINCES:
+        canonical = normalize_province(province)
+
         for lang in ["en", "th"]:
-            url = f"{BASE}/{lang}/calendar/location?province={prov}"
-            try:
-                races = fetch_and_parse(url)
-                print(f"    Runlah [{lang}/{prov}]: {len(races)} races")
-                all_races.extend(races)
-            except Exception as e:
-                print(f"    Runlah [{lang}/{prov}] error: {e}")
+            races = fetch_province(province, lang)
+            for r in races:
+                eid = r["event_id"]
+                if eid not in all_races:
+                    all_races[eid] = {
+                        "id": f"runlah:{eid}",
+                        "name": r["name"],
+                        "url": r["url"],
+                        "image": r["image"],
+                        "date": r["date"],
+                        "dateDisplay": r["dateDisplay"],
+                        "location": r["location"] or canonical,
+                        "province": canonical,
+                        "country": "Thailand",
+                        "source": "runlah",
+                        "type": detect_type(r["name"]),
+                        "distances": detect_distances(r["name"]),
+                        "tags": detect_tags(r["name"]),
+                        "organizer": None,
+                        "price": None,
+                    }
+                else:
+                    # Update with English name if we had Thai first
+                    existing = all_races[eid]
+                    if lang == "en" and r["name"]:
+                        existing["name"] = r["name"]
+                    if not existing["image"] and r["image"]:
+                        existing["image"] = r["image"]
 
-    seen = set()
-    unique = []
-    for r in sorted(all_races, key=lambda x: x["date"]):
-        if r["id"] not in seen:
-            seen.add(r["id"])
-            unique.append(r)
-    return unique
+            # Small delay to be polite
+            time.sleep(0.3)
+
+        if all_races:
+            # Progress log every 10 provinces
+            idx = ALL_PROVINCES.index(province)
+            if (idx + 1) % 10 == 0:
+                print(f"    Runlah: {idx + 1}/{len(ALL_PROVINCES)} provinces, {len(all_races)} races so far")
+
+    result = sorted(all_races.values(), key=lambda x: x["date"])
+    print(f"    Runlah: Done — {len(result)} races from {len(ALL_PROVINCES)} provinces")
+    return result
 
 
 if __name__ == "__main__":
     races = scrape()
     print(f"\nFound {len(races)} races on Runlah:")
     for r in races:
-        print(f"  {r['date']} [{r['type']:8s}] [{r['province']:15s}] {r['name'][:50]}")
+        print(f"  {r['date']} [{r['type']:8s}] [{r['province']:20s}] {r['name'][:50]}")

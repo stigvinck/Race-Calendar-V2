@@ -1,7 +1,7 @@
 """
-Scraper: GoToRace.com — Thailand races, filtered for Chiang Mai
-GoToRace is a curated national site. We scrape all pages and
-filter for events mentioning Chiang Mai / เชียงใหม่.
+Scraper: GoToRace.com — All Thailand races
+Uses the /all-event-2/ page which is server-side rendered (WordPress).
+Pagination via ?paged34178=N
 """
 
 import re
@@ -10,29 +10,56 @@ from html.parser import HTMLParser
 from datetime import datetime
 
 BASE = "https://www.gotorace.com"
-PAGES = [
-    BASE + "/",
-    BASE + "/?paged34178=2",
-    BASE + "/?paged34178=3",
-    BASE + "/?paged34178=4",
-    BASE + "/?paged34178=5",
-]
-
-CM_KEYWORDS = ["chiang mai", "เชียงใหม่", "chiangmai"]
+ALL_EVENTS_URL = BASE + "/all-event-2/"
+MAX_PAGES = 5
 
 PROVINCE_KEYWORDS = {
     "chiang mai": "Chiang Mai", "chiangmai": "Chiang Mai", "chiang dao": "Chiang Mai",
+    "mae rim": "Chiang Mai", "doi suthep": "Chiang Mai",
     "bangkok": "Bangkok", "phuket": "Phuket", "chiang rai": "Chiang Rai",
     "khon kaen": "Khon Kaen", "nakhon ratchasima": "Nakhon Ratchasima",
     "korat": "Nakhon Ratchasima", "songkhla": "Songkhla", "chonburi": "Chonburi",
-    "pattaya": "Chonburi", "surat thani": "Surat Thani", "samui": "Surat Thani",
-    "krabi": "Krabi", "nan": "Nan", "trat": "Trat",
+    "pattaya": "Chonburi", "bangsaen": "Chonburi",
+    "surat thani": "Surat Thani", "samui": "Surat Thani",
+    "krabi": "Krabi", "nan ": "Nan", ", nan": "Nan",
+    "phrae": "Phrae", "trat": "Trat",
     "hua hin": "Prachuap Khiri Khan", "prachuap": "Prachuap Khiri Khan",
     "sam roi yod": "Prachuap Khiri Khan", "samroiyod": "Prachuap Khiri Khan",
-    "phetchabun": "Phetchabun", "lampang": "Lampang", "sukhothai": "Sukhothai",
+    "phetchabun": "Phetchabun", "khao kho": "Phetchabun",
+    "lampang": "Lampang", "lamphun": "Lamphun", "sukhothai": "Sukhothai",
     "kanchanaburi": "Kanchanaburi", "rayong": "Rayong", "phang nga": "Phang Nga",
-    "mae hong son": "Mae Hong Son", "yala": "Yala", "betong": "Yala",
+    "mae hong son": "Mae Hong Son", "pai ": "Mae Hong Son",
+    "yala": "Yala", "betong": "Yala", "nong khai": "Nong Khai",
+    "udon thani": "Udon Thani", "nakhon nayok": "Nakhon Nayok",
+    "nakhonnayok": "Nakhon Nayok",
+    "chachoengsao": "Chachoengsao", "chanthaburi": "Chanthaburi",
+    "nakhon phanom": "Nakhon Phanom", "satun": "Satun",
+    "loei": "Loei", "chiang khan": "Loei", "chaiyaphum": "Chaiyaphum",
+    "buriram": "Buri Ram", "sa kaeo": "Sa Kaeo",
 }
+
+TYPE_MAP = {
+    "road run": "run", "road-run": "run", "fun run": "run",
+    "vertical marathon": "run",
+    "trail": "trail",
+    "triathlon": "triathlon",
+    "cycling": "cycling", "bike": "cycling",
+    "swim": "swim", "open water": "swim",
+    "obstacle": "obstacle",
+}
+
+THAI_MONTHS = {
+    "มกราคม": 1, "กุมภาพันธ์": 2, "มีนาคม": 3, "เมษายน": 4,
+    "พฤษภาคม": 5, "มิถุนายน": 6, "กรกฎาคม": 7, "สิงหาคม": 8,
+    "กันยายน": 9, "ตุลาคม": 10, "พฤศจิกายน": 11, "ธันวาคม": 12,
+}
+
+EN_MONTHS = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+}
+
 
 def detect_province(text):
     lower = text.lower()
@@ -41,185 +68,231 @@ def detect_province(text):
             return prov
     return "Other"
 
-MONTHS = {
-    "january": 1, "february": 2, "march": 3, "april": 4,
-    "may": 5, "june": 6, "july": 7, "august": 8,
-    "september": 9, "october": 10, "november": 11, "december": 12,
-}
 
-TYPE_MAP = {
-    "road run": "run",
-    "road": "run",
-    "vertical marathon": "run",
-    "trail": "trail",
-    "triathlon": "triathlon",
-    "duathlon": "triathlon",
-    "cycling": "cycling",
-    "swim": "swim",
-    "obstacle": "obstacle",
-}
+def detect_type(text):
+    lower = text.lower().strip()
+    for kw, rtype in TYPE_MAP.items():
+        if kw in lower:
+            return rtype
+    return "run"
+
+
+def parse_date(text):
+    """Parse dates like '21-22 March 2026', '11 January 2026', '9 November 2025'"""
+    text = text.strip()
+    # "DD Month YYYY" or "DD-DD Month YYYY"
+    m = re.match(r"(\d{1,2})(?:-\d{1,2})?\s+(\w+)\s+(\d{4})", text)
+    if m:
+        day = int(m.group(1))
+        mon_str = m.group(2).lower()
+        year = int(m.group(3))
+        month = EN_MONTHS.get(mon_str, 0)
+        if month:
+            try:
+                return datetime(year, month, day).strftime("%Y-%m-%d"), text
+            except ValueError:
+                pass
+    return "", text
 
 
 class GoToRaceParser(HTMLParser):
-    """Parse GoToRace event cards from HTML."""
-
+    """Parse the all-event WordPress page."""
     def __init__(self):
         super().__init__()
         self.races = []
         self.current = None
-        self.capture_title = False
-        self.capture_text = False
-        self.text_buffer = ""
-        self.in_card = False
+        self.in_h3 = False
+        self.in_h3_a = False
+        self.collect_text = False
+        self.text_buf = []
 
     def handle_starttag(self, tag, attrs):
         d = dict(attrs)
-        cls = d.get("class", "")
         href = d.get("href", "")
         src = d.get("src", "")
 
-        # Event cards are in <h3> followed by metadata
-        if tag == "h3":
-            self.capture_title = True
-            self.text_buffer = ""
-
-        # Capture event link from <a> inside <h3>
-        if tag == "a" and self.capture_title and href:
-            if href.startswith("http") and "gotorace.com" in href:
-                self.current = {
-                    "url": href,
-                    "name": "",
-                    "image": "",
-                    "date": "",
-                    "dateDisplay": "",
-                    "location": "",
-                    "type_raw": "",
-                    "source": "gotorace",
-                }
-            elif href.startswith("http"):
-                # External link (like pho3nixkids)
-                self.current = {
-                    "url": href,
-                    "name": "",
-                    "image": "",
-                    "date": "",
-                    "dateDisplay": "",
-                    "location": "",
-                    "type_raw": "",
-                    "source": "gotorace",
-                }
-
-        # Capture images
+        # Each race card starts with an <a> containing an <img>
         if tag == "img" and src and "wp-content/uploads" in src:
-            if self.current and not self.current["image"]:
-                self.current["image"] = src
+            if self.current is None:
+                self.current = {
+                    "image": src,
+                    "name": "", "url": "", "date": "", "dateDisplay": "",
+                    "location": "", "type_raw": "",
+                }
+
+        # The title link: <h3><a href="...">Name</a></h3>
+        if tag == "h3":
+            self.in_h3 = True
+        if tag == "a" and self.in_h3 and href and self.current:
+            self.current["url"] = href
+            self.in_h3_a = True
 
     def handle_data(self, data):
         text = data.strip()
         if not text:
             return
 
-        if self.capture_title:
-            self.text_buffer += text
+        if self.in_h3_a and self.current:
+            self.current["name"] = text
 
-        if self.current:
-            # Type detection (e.g., "Road Run", "Trail", "Triathlon")
+        if self.current and not self.in_h3_a:
+            # Type line: "Road Run", "Trail", "Triathlon" etc.
             lower = text.lower().strip()
-            if lower in TYPE_MAP:
-                self.current["type_raw"] = lower
+            if lower in ("road run", "trail", "triathlon", "cycling", "road-run",
+                         "vertical marathon", "obstacle", "swim", "fun run",
+                         "road run  ", "road run"):
+                self.current["type_raw"] = text.strip()
+                return
 
-            # Date detection
-            if not self.current["date"]:
-                # "DD Month YYYY" or "DD-DD Month YYYY"
-                m = re.match(
-                    r"^(\d{1,2})(?:-\d{1,2})?\s+"
-                    r"(January|February|March|April|May|June|July|August|"
-                    r"September|October|November|December)\s+(\d{4})$",
-                    text, re.IGNORECASE
-                )
-                if m:
-                    day = int(m.group(1))
-                    month = MONTHS.get(m.group(2).lower(), 0)
-                    year = int(m.group(3))
-                    if month:
-                        try:
-                            dt = datetime(year, month, day)
-                            self.current["date"] = dt.strftime("%Y-%m-%d")
-                            self.current["dateDisplay"] = text
-                        except ValueError:
-                            pass
+            # Date line: contains month names + year
+            if re.search(r"(?:January|February|March|April|May|June|July|August|"
+                         r"September|October|November|December)\s+\d{4}", text):
+                d, dd = parse_date(text)
+                if d:
+                    self.current["date"] = d
+                    self.current["dateDisplay"] = dd
+                return
 
-                # "D Month YYYY"
-                m2 = re.match(
-                    r"^(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
-                    r"September|October|November|December)\s+(\d{4})$",
-                    text, re.IGNORECASE
-                )
-                if m2 and not self.current["date"]:
-                    day = int(m2.group(1))
-                    month = MONTHS.get(m2.group(2).lower(), 0)
-                    year = int(m2.group(3))
-                    if month:
-                        try:
-                            dt = datetime(year, month, day)
-                            self.current["date"] = dt.strftime("%Y-%m-%d")
-                            self.current["dateDisplay"] = text
-                        except ValueError:
-                            pass
-
-            # Location: anything with a comma that looks like a place
-            if not self.current["location"] and "," in text and len(text) > 10:
-                if not re.match(r"^\d", text) and text[0].isupper():
-                    self.current["location"] = text
+            # Location line: everything else with comma or province info
+            if len(text) > 5 and not self.current["location"]:
+                self.current["location"] = text
 
     def handle_endtag(self, tag):
-        if tag == "h3" and self.capture_title:
-            self.capture_title = False
-            if self.current and self.text_buffer:
-                self.current["name"] = self.text_buffer.strip()
+        if tag == "a" and self.in_h3_a:
+            self.in_h3_a = False
+        if tag == "h3":
+            self.in_h3 = False
 
-        # Finalize race when we hit structural boundaries
+        # A race card ends — check if we have enough data
+        # We commit when we see the next image or at end
+        pass
+
+    def flush_current(self):
+        """Call after parsing to commit the last race."""
         if self.current and self.current["name"] and self.current["date"]:
-            # Check for duplicates
-            urls = {r["url"] for r in self.races}
-            if self.current["url"] not in urls:
-                self.races.append(self.current)
-            self.current = None
+            self.races.append(self.current)
+        self.current = None
 
 
-def is_chiang_mai(race):
-    """Check if race is in Chiang Mai based on name or location."""
-    searchable = f"{race.get('name', '')} {race.get('location', '')}".lower()
-    return any(kw in searchable for kw in CM_KEYWORDS)
+def fetch_page(page_num):
+    """Fetch one page of the all-events list."""
+    url = ALL_EVENTS_URL if page_num <= 1 else f"{ALL_EVENTS_URL}?paged34178={page_num}"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; CMRaces/1.0)"
+    })
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        html = resp.read().decode("utf-8")
+    return html
+
+
+def parse_races_from_html(html):
+    """
+    Parse race cards from the GoToRace HTML.
+    Each card has: image, h3>a (name+url), then text lines for type, location, date.
+    """
+    races = []
+    # Use regex to find each card block since HTMLParser state tracking is tricky
+    # Each card is between <article> or between race images
+    # Actually, from the HTML we see: img → h3>a → text lines (type, location, date)
+
+    # Find all h3 > a links (race titles)
+    title_links = re.findall(
+        r'<h3[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>\s*(.+?)\s*</a>\s*</h3>',
+        html, re.DOTALL)
+
+    # Find all event images
+    images = re.findall(
+        r'<img[^>]*src="(https://www\.gotorace\.com/wp-content/uploads/[^"]+)"',
+        html)
+
+    # Find the text blocks between titles — they contain type, location, date
+    # Split by the h3 tags to get the text after each title
+    parts = re.split(r'<h3[^>]*>.*?</h3>', html, flags=re.DOTALL)
+
+    for i, (url, name) in enumerate(title_links):
+        name = re.sub(r'<[^>]+>', '', name).strip()
+        if not name:
+            continue
+
+        # Get the text block after this title
+        block = parts[i + 1] if i + 1 < len(parts) else ""
+        # Strip HTML and get lines
+        block_text = re.sub(r'<[^>]+>', '\n', block)
+        lines = [l.strip() for l in block_text.split('\n') if l.strip()]
+
+        type_raw = ""
+        location = ""
+        date_str = ""
+        date_display = ""
+
+        for line in lines[:8]:  # only check first few lines
+            lower = line.lower().strip()
+            # Type detection
+            if lower in ("road run", "trail", "triathlon", "cycling",
+                         "vertical marathon", "obstacle", "swim", "fun run"):
+                type_raw = line.strip()
+                continue
+            # Date detection
+            dm = re.search(
+                r"(\d{1,2})(?:-\d{1,2})?\s+"
+                r"(January|February|March|April|May|June|July|August|"
+                r"September|October|November|December)\s+(\d{4})", line)
+            if dm:
+                d, dd = parse_date(line)
+                if d:
+                    date_str = d
+                    date_display = dd
+                continue
+            # Location: anything else that's long enough
+            if len(line) > 5 and not location:
+                location = line
+
+        if not date_str:
+            continue
+
+        image = images[i] if i < len(images) else ""
+
+        races.append({
+            "name": name, "url": url, "image": image,
+            "date": date_str, "dateDisplay": date_display,
+            "location": location, "type_raw": type_raw,
+        })
+
+    return races
 
 
 def scrape():
-    """Fetch all GoToRace pages, filter for Chiang Mai events."""
+    """Fetch all pages and return races."""
     all_races = []
 
-    for url in PAGES:
+    for page in range(1, MAX_PAGES + 1):
         try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; CMRaces/1.0)"
-            })
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                html = resp.read().decode("utf-8")
-
-            parser = GoToRaceParser()
-            parser.feed(html)
-            all_races.extend(parser.races)
+            html = fetch_page(page)
+            races = parse_races_from_html(html)
+            print(f"    GoToRace page {page}: {len(races)} races")
+            if not races:
+                break
+            all_races.extend(races)
         except Exception as e:
-            print(f"    GoToRace page error ({url}): {e}")
+            print(f"    GoToRace page {page} error: {e}")
+            break
 
-    # Build full schema — all Thailand races (no CM filter)
+    # Build full schema
     result = []
+    seen = set()
     for r in all_races:
-        race_type = TYPE_MAP.get(r.get("type_raw", ""), "run")
         slug = re.sub(r"[^a-z0-9]+", "-", r["name"].lower())[:40].strip("-")
+        rid = f"gotorace:{slug}"
+        if rid in seen:
+            continue
+        seen.add(rid)
+
+        race_type = detect_type(r.get("type_raw", ""))
         loc = r.get("location", "")
         province = detect_province(f"{r['name']} {loc}")
+
         result.append({
-            "id": f"gotorace:{slug}",
+            "id": rid,
             "name": r["name"],
             "url": r["url"],
             "image": r["image"],
@@ -241,8 +314,6 @@ def scrape():
 
 if __name__ == "__main__":
     races = scrape()
-    print(f"Found {len(races)} Chiang Mai races on GoToRace:")
+    print(f"\nFound {len(races)} races on GoToRace:")
     for r in races:
-        print(f"  {r['date']} [{r['type']}] {r['name']}")
-    if not races:
-        print("  (No Chiang Mai events found — this is normal, GoToRace is national)")
+        print(f"  {r['date']} [{r['type']:10s}] [{r['province']:20s}] {r['name'][:50]}")

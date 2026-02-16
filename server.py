@@ -1,7 +1,8 @@
 """
-CM Races — Lightweight server
+Thailand Race Finder — Lightweight server
 Serves the static site + runs scrapers on a schedule.
 Tracks dateFound/lastSeen for each race across scrapes.
+Includes self-ping to prevent Render free plan spin-down.
 """
 
 import os
@@ -10,17 +11,20 @@ import threading
 import time
 import http.server
 import socketserver
+import urllib.request
 from datetime import datetime
 
 from scrapers.runlah import scrape as scrape_runlah
 from scrapers.gotorace import scrape as scrape_gotorace
-from scrapers.worldsmarathons import scrape as scrape_wm
-from scrapers.ahotu import scrape as scrape_ahotu
 
 PORT = int(os.environ.get("PORT", 10000))
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL_HOURS", 6)) * 3600
 RACES_PATH = os.path.join(DATA_DIR, "public", "races.json")
+
+# Set this in Render environment variables, e.g. https://your-app.onrender.com
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
+PING_INTERVAL = 10 * 60  # 10 minutes (Render sleeps at 15 min idle)
 
 
 def load_existing():
@@ -43,8 +47,6 @@ def run_all_scrapers():
     scrapers = [
         ("Runlah", scrape_runlah),
         ("GoToRace", scrape_gotorace),
-        ("WorldsMarathons", scrape_wm),
-        ("Ahotu", scrape_ahotu),
     ]
 
     for name, scraper_fn in scrapers:
@@ -63,23 +65,19 @@ def run_all_scrapers():
             continue
 
         if rid in existing:
-            # Preserve dateFound from previous scrape
             r["dateFound"] = existing[rid].get("dateFound", now)
         else:
-            # First time we've seen this race
             r["dateFound"] = now
 
         r["lastSeen"] = now
         merged[rid] = r
 
-    # Also keep races from previous data that weren't in this scrape
-    # (they may have been removed from the source, but we keep them)
+    # Keep races from previous data that weren't in this scrape
     for rid, old_race in existing.items():
         if rid not in merged:
             old_race.setdefault("status", "unknown")
             merged[rid] = old_race
 
-    # Sort by date
     races_list = sorted(merged.values(), key=lambda r: r.get("date", ""))
 
     output = {
@@ -95,7 +93,7 @@ def run_all_scrapers():
 
 
 def scraper_loop():
-    """Run scrapers immediately, then on interval."""
+    """Run scrapers immediately on startup, then on interval."""
     while True:
         print(f"\n{'='*50}")
         print(f"Scraping at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
@@ -105,18 +103,49 @@ def scraper_loop():
         time.sleep(SCRAPE_INTERVAL)
 
 
+def keep_alive_loop():
+    """Ping ourselves every 10 min to prevent Render free-plan spin-down.
+    Uses RENDER_EXTERNAL_URL env var (must be set manually on free plan)."""
+    url = RENDER_URL
+    if not url:
+        print("⚠ RENDER_EXTERNAL_URL not set — self-ping disabled.")
+        print("  Set it in Render dashboard → Environment → Add Variable:")
+        print("  RENDER_EXTERNAL_URL = https://your-app.onrender.com")
+        return
+
+    ping_url = url.rstrip("/") + "/races.json"
+    print(f"🏓 Keep-alive pinging {ping_url} every {PING_INTERVAL // 60} min")
+
+    while True:
+        time.sleep(PING_INTERVAL)
+        try:
+            req = urllib.request.Request(ping_url, headers={
+                "User-Agent": "self-ping/keep-alive"
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                _ = resp.read(100)
+        except Exception:
+            pass  # Network hiccup, will retry next cycle
+
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=os.path.join(DATA_DIR, "public"), **kwargs)
 
     def log_message(self, format, *args):
-        if "404" in str(args) or "500" in str(args):
+        msg = str(args)
+        if "404" in msg or "500" in msg:
             super().log_message(format, *args)
 
 
 if __name__ == "__main__":
-    t = threading.Thread(target=scraper_loop, daemon=True)
-    t.start()
+    # Start scraper thread — runs immediately then every N hours
+    t1 = threading.Thread(target=scraper_loop, daemon=True)
+    t1.start()
+
+    # Start keep-alive thread — pings self every 10 min
+    t2 = threading.Thread(target=keep_alive_loop, daemon=True)
+    t2.start()
 
     with socketserver.TCPServer(("", PORT), QuietHandler) as httpd:
         print(f"🌐 Serving on port {PORT}")
